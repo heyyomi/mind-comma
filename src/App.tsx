@@ -1,7 +1,7 @@
 import { useState, useEffect, useId } from 'react';
 import confetti from 'canvas-confetti';
 import { StepId, CheckinResult, PlanData, GoogleSheetConfig, ToastMessage, StressTier } from './types';
-import { getSavedConfig, submitCheckinRecord, submitPlanRecord, submitConcernRecord, syncAdminPinFromRemote } from './services/googleSheets';
+import { getSavedConfig, submitCheckinRecord, submitPlanRecord, submitConcernRecord, syncAdminPinFromRemote, applyUrlConfigParams } from './services/googleSheets';
 import { Header } from './components/Header';
 import { StepIntro } from './components/StepIntro';
 import { Step1Learn } from './components/Step1Learn';
@@ -95,8 +95,12 @@ export default function App() {
     }
   };
 
-  // URL 쿼리 파라미터 확인 및 원격 PIN 동기화
+  // URL 쿼리 파라미터 확인 및 원격 PIN & 설정 동기화
   useEffect(() => {
+    applyUrlConfigParams();
+    const latestConfig = getSavedConfig();
+    setConfig(latestConfig);
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('board') === '1') {
       setIsBoardView(true);

@@ -4,7 +4,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * [온기, 마음 쉼표, 스트레스 Free Day] Google Apps Script (Code.gs)
  * 
  * 1. 이 코드를 복사하여 구글 시트 > [확장 프로그램] > [Apps Script] 에 붙여넣으세요.
- * 2. 상단 [배포] > [새 배포] > 유형: [웹 앱] 선택
+ * 2. 상단 [배포] > [새 배포] (또는 배포 관리 > 새 버전) > 유형: [웹 앱] 선택
  * 3. 다음 사용자 계정으로 실행: [나] / 액세스 권한: [모든 사용자(Anyone)] 선택 후 [배포] 클릭
  * 4. 발급된 "웹 앱 URL"을 웹 애플리케이션의 [구글 시트 연동 설정]에 붙여넣으세요!
  */
@@ -19,8 +19,8 @@ function doGet(e) {
     // 관리자 PIN 조회 요청
     if (action === "getPin") {
       var configSheet = getOrCreateConfigSheet(ss);
-      var pinVal = configSheet.getRange("B1").getValue();
-      return createJsonResponse({ status: "success", pin: String(pinVal || "1234") });
+      var currentPin = getPinFromConfigSheet(configSheet);
+      return createJsonResponse({ status: "success", pin: currentPin });
     }
 
     var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
@@ -56,12 +56,51 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var body = e.postData ? JSON.parse(e.postData.contents) : e.parameter;
     
-    // 관리자 PIN 변경 요청 처리
+    // 1. 관리자 PIN 변경 요청
     if (body && body.action === "updatePin") {
       var newPin = String(body.newPin || "1234").trim();
       var configSheet = getOrCreateConfigSheet(ss);
-      configSheet.getRange("B1").setValue(newPin);
+      savePinToConfigSheet(configSheet, newPin);
       return createJsonResponse({ status: "success", message: "관리자 PIN이 원격 시트에 동기화되었습니다.", pin: newPin });
+    }
+
+    // 2. 전체 데이터 초기화 (테스트 데이터 비우기) 요청
+    if (body && body.action === "clearAll") {
+      var recordSheet = getOrCreateSheet(ss, "마음쉼표_기록");
+      var lastRow = recordSheet.getLastRow();
+      if (lastRow > 1) {
+        recordSheet.deleteRows(2, lastRow - 1);
+      }
+      return createJsonResponse({ status: "success", message: "모든 기록이 초기화되었습니다." });
+    }
+
+    // 3. 개별 항목 삭제 요청
+    if (body && body.action === "deleteItem") {
+      var targetSheet = getOrCreateSheet(ss, "마음쉼표_기록");
+      var allData = targetSheet.getDataRange().getValues();
+      var deleted = false;
+      
+      for (var r = allData.length - 1; r >= 1; r--) {
+        var rowVal = allData[r];
+        var rowTime = String(rowVal[0] || "");
+        var rowType = String(rowVal[1] || "");
+        var rowName = String(rowVal[2] || "");
+        var rowSituation = String(rowVal[7] || "");
+        var rowMethod = String(rowVal[8] || "");
+
+        var matchName = !body.studentName || rowName === body.studentName;
+        var matchType = !body.type || rowType === body.type;
+        var matchContent = (!body.situation && !body.method) || 
+                           (body.situation && rowSituation === body.situation) || 
+                           (body.method && rowMethod === body.method);
+
+        if (matchName && matchType && matchContent) {
+          targetSheet.deleteRow(r + 1);
+          deleted = true;
+          break;
+        }
+      }
+      return createJsonResponse({ status: "success", deleted: deleted, message: deleted ? "항목이 삭제되었습니다." : "해당 항목을 찾을 수 없습니다." });
     }
 
     var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
@@ -122,6 +161,27 @@ function getOrCreateConfigSheet(ss) {
   return sheet;
 }
 
+function getPinFromConfigSheet(sheet) {
+  var data = sheet.getDataRange().getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][0]).trim() === "관리자_PIN") {
+      return String(data[i][1] || "1234").trim();
+    }
+  }
+  return "1234";
+}
+
+function savePinToConfigSheet(sheet, newPin) {
+  var data = sheet.getDataRange().getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][0]).trim() === "관리자_PIN") {
+      sheet.getRange(i + 1, 2).setValue(String(newPin).trim());
+      return;
+    }
+  }
+  sheet.appendRow(["관리자_PIN", String(newPin).trim()]);
+}
+
 function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
@@ -153,8 +213,8 @@ export const syncAdminPinFromRemote = async (): Promise<string> => {
 
   try {
     const url = config.webAppUrl.includes('?') 
-      ? `${config.webAppUrl}&action=getPin`
-      : `${config.webAppUrl}?action=getPin`;
+      ? `${config.webAppUrl}&action=getPin&_t=${Date.now()}`
+      : `${config.webAppUrl}?action=getPin&_t=${Date.now()}`;
       
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
     if (response.ok) {
@@ -203,9 +263,33 @@ export const setAdminPin = async (newPin: string): Promise<boolean> => {
   }
 };
 
+// 동기식 PIN 검증 (로컬 기준)
 export const verifyAdminPin = (inputPin: string): boolean => {
   const currentPin = getAdminPin();
   return inputPin.trim() === currentPin.trim();
+};
+
+// 비동기식 PIN 검증 (원격 구글 시트 최신 PIN까지 실시간 확인)
+export const verifyAdminPinAsync = async (inputPin: string): Promise<boolean> => {
+  const trimmed = inputPin.trim();
+  // 1. 로컬에 저장된 핀과 맞으면 즉시 통과
+  if (trimmed === getAdminPin().trim()) {
+    return true;
+  }
+
+  // 2. 불일치할 경우 원격 구글 시트 최신 PIN 확인 시도
+  const config = getSavedConfig();
+  if (config.webAppUrl) {
+    try {
+      const latestPin = await syncAdminPinFromRemote();
+      if (trimmed === latestPin.trim()) {
+        return true;
+      }
+    } catch (e) {
+      console.warn('Remote pin verification error:', e);
+    }
+  }
+  return false;
 };
 
 export const resetAdminPin = (): void => {
@@ -237,6 +321,74 @@ export const saveConfig = (config: GoogleSheetConfig) => {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
 };
 
+// 학생 및 다른 기기에 공유할 링크 생성 (모든 설정값 및 PIN 포함)
+export const generateClassroomShareUrl = (boardOnly = false): string => {
+  const config = getSavedConfig();
+  const pin = getAdminPin();
+  const base = window.location.origin + window.location.pathname;
+  const params = new URLSearchParams();
+
+  if (boardOnly) {
+    params.set('board', '1');
+  }
+  if (config.webAppUrl) {
+    params.set('sheetUrl', config.webAppUrl);
+  }
+  if (config.schoolName) {
+    params.set('school', config.schoolName);
+  }
+  if (config.className) {
+    params.set('class', config.className);
+  }
+  if (pin && pin !== DEFAULT_ADMIN_PIN) {
+    params.set('pin', pin);
+  }
+
+  const query = params.toString();
+  return query ? `${base}?${query}` : base;
+};
+
+// URL 파라미터로부터 설정 및 PIN 자동 주입
+export const applyUrlConfigParams = (): boolean => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const sheetUrl = params.get('sheetUrl') || params.get('url');
+    const school = params.get('school');
+    const className = params.get('class') || params.get('className');
+    const pin = params.get('pin');
+
+    let updated = false;
+    const currentConfig = getSavedConfig();
+
+    if (sheetUrl && sheetUrl !== currentConfig.webAppUrl) {
+      currentConfig.webAppUrl = sheetUrl;
+      currentConfig.isConnected = true;
+      updated = true;
+    }
+    if (school && school !== currentConfig.schoolName) {
+      currentConfig.schoolName = school;
+      updated = true;
+    }
+    if (className && className !== currentConfig.className) {
+      currentConfig.className = className;
+      updated = true;
+    }
+
+    if (updated) {
+      saveConfig(currentConfig);
+    }
+
+    if (pin && pin.trim()) {
+      localStorage.setItem(ADMIN_PIN_KEY, pin.trim());
+    }
+
+    return updated;
+  } catch (e) {
+    console.error('Failed to parse URL config params:', e);
+    return false;
+  }
+};
+
 // === STEP 5 실천 다짐 (종이비행기) 로컬 저장소 ===
 export const getLocalNotes = (): ClassroomBoardNote[] => {
   try {
@@ -252,6 +404,13 @@ export const saveLocalNote = (note: ClassroomBoardNote) => {
   const current = getLocalNotes();
   const updated = [note, ...current];
   localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(updated));
+};
+
+export const deleteLocalNote = (noteId: string): ClassroomBoardNote[] => {
+  const current = getLocalNotes();
+  const updated = current.filter((n) => n.id !== noteId);
+  localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(updated));
+  return updated;
 };
 
 // === STEP 3 고민 및 마음 들여다보기 로컬 저장소 ===
@@ -271,11 +430,72 @@ export const saveLocalConcern = (concern: ConcernNote) => {
   localStorage.setItem(LOCAL_CONCERNS_KEY, JSON.stringify(updated));
 };
 
+export const deleteLocalConcern = (concernId: string): ConcernNote[] => {
+  const current = getLocalConcerns();
+  const updated = current.filter((c) => c.id !== concernId);
+  localStorage.setItem(LOCAL_CONCERNS_KEY, JSON.stringify(updated));
+  return updated;
+};
+
 export const likeLocalConcern = (concernId: string) => {
   const current = getLocalConcerns();
   const updated = current.map((c) => (c.id === concernId ? { ...c, likes: (c.likes || 0) + 1 } : c));
   localStorage.setItem(LOCAL_CONCERNS_KEY, JSON.stringify(updated));
   return updated;
+};
+
+// === 전체 테스트 데이터 비우기 (로컬 + 원격) ===
+export const clearAllLocalData = () => {
+  localStorage.removeItem(LOCAL_NOTES_KEY);
+  localStorage.removeItem(LOCAL_CONCERNS_KEY);
+  localStorage.removeItem(LOCAL_CHECKINS_KEY);
+};
+
+export const clearAllDataAndRemote = async (): Promise<boolean> => {
+  // 1. 로컬 데이터 초기화
+  clearAllLocalData();
+
+  // 2. 원격 구글 시트에 초기화 요청
+  const config = getSavedConfig();
+  if (config.webAppUrl) {
+    try {
+      await fetch(config.webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'clearAll' }),
+        mode: 'no-cors',
+      });
+      return true;
+    } catch (e) {
+      console.warn('Could not clear remote sheet:', e);
+    }
+  }
+  return true;
+};
+
+// 원격 단일 항목 삭제 요청
+export const deleteRemoteRecord = async (params: {
+  studentName?: string;
+  type?: string;
+  situation?: string;
+  method?: string;
+}) => {
+  const config = getSavedConfig();
+  if (!config.webAppUrl) return;
+
+  try {
+    await fetch(config.webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'deleteItem',
+        ...params,
+      }),
+      mode: 'no-cors',
+    });
+  } catch (e) {
+    console.warn('Could not delete remote record:', e);
+  }
 };
 
 // === STEP 2 자가진단 로컬 저장소 ===

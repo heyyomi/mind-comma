@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassroomBoardNote, ConcernNote, GoogleSheetConfig, BoardType } from '../types';
 import { NOTE_PALETTES, STRESS_CATEGORIES } from '../constants/assets';
-import { fetchClassData, exportDataAsCSV, likeLocalConcern } from '../services/googleSheets';
+import {
+  fetchClassData,
+  exportDataAsCSV,
+  likeLocalConcern,
+  deleteLocalConcern,
+  deleteLocalNote,
+  deleteRemoteRecord,
+  clearAllDataAndRemote,
+  generateClassroomShareUrl,
+} from '../services/googleSheets';
 import {
   X,
   RefreshCw,
@@ -11,10 +20,12 @@ import {
   Sparkles,
   MessageSquareHeart,
   Send,
-  Layers,
   BarChart3,
-  Filter,
-  Lock,
+  Trash2,
+  Trash,
+  Share2,
+  AlertTriangle,
+  Check,
 } from 'lucide-react';
 
 interface ClassBoardViewProps {
@@ -30,7 +41,6 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
   onClose,
   onOpenSheetModal,
   onShowToast,
-  onOpenAdminAuth,
 }) => {
   const [activeBoard, setActiveBoard] = useState<BoardType>('concerns');
   const [plans, setPlans] = useState<ClassroomBoardNote[]>([]);
@@ -38,6 +48,9 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('전체');
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
 
   const loadData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -90,6 +103,64 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
     const updated = likeLocalConcern(concernId);
     setConcerns(updated);
     onShowToast('따뜻한 공감 하트를 보냈어요! 💖');
+  };
+
+  // 개별 고민 카드 삭제
+  const handleDeleteConcern = async (concern: ConcernNote, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`'${concern.studentName || '익명'}' 학생의 고민 카드를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    const updated = deleteLocalConcern(concern.id);
+    setConcerns(updated);
+    await deleteRemoteRecord({
+      studentName: concern.studentName,
+      type: '고민나눔',
+      situation: concern.situation,
+    });
+    onShowToast('선택한 고민 카드가 삭제되었습니다.');
+  };
+
+  // 개별 실천 다짐 카드 삭제
+  const handleDeletePlan = async (note: ClassroomBoardNote, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`'${note.studentName || '익명'}' 학생의 실천 다짐 비행기 카드를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    const updated = deleteLocalNote(note.id);
+    setPlans(updated);
+    await deleteRemoteRecord({
+      studentName: note.studentName,
+      type: '실천다짐',
+      method: note.method,
+    });
+    onShowToast('선택한 실천 다짐 카드가 삭제되었습니다.');
+  };
+
+  // 전체 데이터 초기화 (테스트 데이터 비우기)
+  const handleClearAllData = async () => {
+    setIsClearing(true);
+    await clearAllDataAndRemote();
+    setPlans([]);
+    setConcerns([]);
+    setIsClearing(false);
+    setIsClearModalOpen(false);
+    onShowToast('전자칠판의 모든 테스트 데이터가 깨끗하게 비워졌습니다! 🧹');
+  };
+
+  // 학급 접속용 공유 링크 복사
+  const handleCopyShareLink = async () => {
+    try {
+      const shareUrl = generateClassroomShareUrl(false);
+      await navigator.clipboard.writeText(shareUrl);
+      setIsLinkCopied(true);
+      onShowToast('학급 설정 & 비밀번호가 포함된 공유 링크가 복사되었습니다! 휴대폰에서 바로 열 수 있어요.');
+      setTimeout(() => setIsLinkCopied(false), 3000);
+    } catch (e) {
+      onShowToast('링크 복사에 실패했습니다. 주소창의 URL을 공유해주세요.');
+    }
   };
 
   const handleExportCSV = () => {
@@ -152,7 +223,17 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
         </div>
 
         {/* 우측 관리 액션 버튼들 */}
-        <div className="flex items-center gap-1.5 sm:gap-2 self-end sm:self-auto">
+        <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 self-end sm:self-auto">
+          {/* 기기 간 동기화 공유 링크 복사 버튼 */}
+          <button
+            onClick={handleCopyShareLink}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all shadow-xs"
+            title="학생/다른 휴대폰에서 설정과 비밀번호를 그대로 열 수 있는 링크 복사"
+          >
+            {isLinkCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5 text-indigo-600" />}
+            <span>{isLinkCopied ? '복사 완료!' : '학급 링크 공유'}</span>
+          </button>
+
           <button
             onClick={() => loadData(false)}
             disabled={isLoading}
@@ -170,6 +251,16 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
           >
             <Download className="w-3.5 h-3.5" />
             <span className="hidden md:inline">CSV 저장</span>
+          </button>
+
+          {/* 테스트 데이터 비우기 버튼 */}
+          <button
+            onClick={() => setIsClearModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-all shadow-xs"
+            title="테스트로 작성한 모든 게시글 비우기"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>데이터 비우기</span>
           </button>
 
           <button
@@ -290,22 +381,31 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                 {filteredConcerns.map((concern, idx) => {
-                  const palette = NOTE_PALETTES[(concern.colorIndex ?? idx) % NOTE_PALETTES.length];
                   return (
                     <div
                       key={concern.id || idx}
-                      className={`bg-white rounded-[24px] p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 transform hover:-translate-y-0.5 animate-in fade-in duration-300`}
+                      className="bg-white rounded-[24px] p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 transform hover:-translate-y-0.5 animate-in fade-in duration-300 relative group"
                     >
                       <div className="space-y-2.5">
-                        {/* 카드 상단: 작성자 및 카테고리 태그 */}
+                        {/* 카드 상단: 작성자, 작성일, 개별 삭제 버튼 */}
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                             <span>{concern.studentName || '익명 친구'}</span>
                           </span>
-                          <span className="text-[10px] text-slate-400">
-                            {concern.createdAt?.slice(0, 10) || ''}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400">
+                              {concern.createdAt?.slice(0, 10) || ''}
+                            </span>
+                            {/* 삭제 버튼 */}
+                            <button
+                              onClick={(e) => handleDeleteConcern(concern, e)}
+                              className="p-1 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-600 transition-all opacity-80 group-hover:opacity-100"
+                              title="이 고민 카드 삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* 카테고리 칩 목록 */}
@@ -372,16 +472,26 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
                   return (
                     <div
                       key={note.id || index}
-                      className={`bg-white rounded-[24px] p-5 border ${palette.border} shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 transform hover:-translate-y-0.5 animate-in fade-in zoom-in-95 duration-300`}
+                      className={`bg-white rounded-[24px] p-5 border ${palette.border} shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 transform hover:-translate-y-0.5 animate-in fade-in zoom-in-95 duration-300 relative group`}
                     >
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${palette.tag}`}>
                             ✈️ {note.studentName || '익명'}
                           </span>
-                          <span className="text-[10px] text-slate-400">
-                            {note.createdAt?.slice(0, 10) || ''}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400">
+                              {note.createdAt?.slice(0, 10) || ''}
+                            </span>
+                            {/* 삭제 버튼 */}
+                            <button
+                              onClick={(e) => handleDeletePlan(note, e)}
+                              className="p-1 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-600 transition-all opacity-80 group-hover:opacity-100"
+                              title="이 실천 다짐 비행기 삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <h4 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
@@ -429,9 +539,53 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
         <span>* 5초마다 자동 갱신 중 · 마지막 동기화: {lastRefreshed || '방금 전'}</span>
         <span className="flex items-center gap-1.5 font-medium text-slate-700">
           <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-          <span>{config.schoolName} 보건실 스트레스 Free Day</span>
+          <span>{config.schoolName} 온기, 마음 쉼표</span>
         </span>
       </div>
+
+      {/* 전체 데이터 초기화 확인 모달 */}
+      {isClearModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center border border-rose-100 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900">게시판 테스트 데이터 비우기</h3>
+                <p className="text-xs text-slate-500">수업 시작 전 깨끗하게 초기화합니다.</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 leading-relaxed space-y-1.5">
+              <p>
+                등록된 <strong>모든 고민 카드({concerns.length}건)</strong>와 <strong>실천 다짐 비행기({plans.length}대)</strong> 데이터를 삭제하시겠습니까?
+              </p>
+              <p className="text-slate-500 text-[11px]">
+                * 로컬 브라우저 및 연결된 구글 시트의 테스트 기록이 모두 초기화됩니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setIsClearModalOpen(false)}
+                disabled={isClearing}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold transition-all"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleClearAllData}
+                disabled={isClearing}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5"
+              >
+                {isClearing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash className="w-3.5 h-3.5" />}
+                <span>{isClearing ? '비우는 중...' : '모두 삭제하기'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

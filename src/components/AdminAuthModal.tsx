@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, KeyRound, ShieldCheck, X, AlertCircle, Sparkles, Settings2 } from 'lucide-react';
-import { verifyAdminPin, setAdminPin, syncAdminPinFromRemote } from '../services/googleSheets';
+import { Lock, KeyRound, ShieldCheck, X, AlertCircle, RefreshCw, Settings2 } from 'lucide-react';
+import { verifyAdminPinAsync, setAdminPin, syncAdminPinFromRemote } from '../services/googleSheets';
 
 interface AdminAuthModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
 }) => {
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isChangingPin, setIsChangingPin] = useState(false);
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
@@ -49,37 +50,46 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleVerify = (e?: React.FormEvent) => {
+  const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!pin.trim()) {
       setErrorMsg('비밀번호를 입력해주세요.');
       return;
     }
 
-    if (verifyAdminPin(pin)) {
+    setIsVerifying(true);
+    setErrorMsg('');
+    const isValid = await verifyAdminPinAsync(pin);
+    setIsVerifying(false);
+
+    if (isValid) {
       setErrorMsg('');
       onSuccess();
     } else {
-      setErrorMsg('비밀번호가 일치하지 않습니다. (초기 기본 비밀번호: 1234)');
+      setErrorMsg('비밀번호가 일치하지 않습니다. 다시 확인해주세요.');
     }
   };
 
   const handleChangePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verifyAdminPin(currentPinInput)) {
+    setIsSaving(true);
+    const isCurrentValid = await verifyAdminPinAsync(currentPinInput);
+    if (!isCurrentValid) {
+      setIsSaving(false);
       setErrorMsg('현재 비밀번호가 일치하지 않습니다.');
       return;
     }
     if (newPinInput.length < 2) {
+      setIsSaving(false);
       setErrorMsg('새 비밀번호는 2자리 이상 입력해주세요.');
       return;
     }
     if (newPinInput !== newPinConfirm) {
+      setIsSaving(false);
       setErrorMsg('새 비밀번호 확인이 일치하지 않습니다.');
       return;
     }
 
-    setIsSaving(true);
     const success = await setAdminPin(newPinInput);
     setIsSaving(false);
 
@@ -172,13 +182,15 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className={`flex-1 py-2.5 px-4 rounded-xl text-white font-semibold text-xs transition-all shadow-xs ${
+                  disabled={isVerifying}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-white font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 ${
                     isBoguniMode
                       ? 'bg-indigo-600 hover:bg-indigo-700'
                       : 'bg-slate-900 hover:bg-slate-800'
-                  }`}
+                  } ${isVerifying ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  {confirmBtnText}
+                  {isVerifying && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isVerifying ? '확인 중...' : confirmBtnText}</span>
                 </button>
               </div>
 
