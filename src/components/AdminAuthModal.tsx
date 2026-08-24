@@ -132,10 +132,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
                   <span>{isBoguniMode ? '실천 다짐 확인 & 상품 수령' : '관리자 잠금 보호'}</span>
                 </p>
                 <p className="leading-relaxed text-xs text-slate-700">{targetDescription}</p>
-                <div className="pt-1 flex items-center gap-1.5 text-[11px] text-indigo-600 font-medium">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>보거니 기본 비밀번호: <strong>1234</strong></span>
-                </div>
               </div>
 
               <div>
@@ -151,7 +147,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
                       setPin(e.target.value);
                       if (errorMsg) setErrorMsg('');
                     }}
-                    placeholder="비밀번호 입력 (기본: 1234)"
+                    placeholder="관리자 비밀번호 입력"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50 tracking-wider text-slate-800"
                     autoFocus
                   />
@@ -212,7 +208,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
                     type="password"
                     value={currentPinInput}
                     onChange={(e) => setCurrentPinInput(e.target.value)}
-                    placeholder="현재 비밀번호 (기본: 1234)"
+                    placeholder="현재 비밀번호 입력"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-slate-900 bg-slate-50 text-slate-800"
                     required
                   />

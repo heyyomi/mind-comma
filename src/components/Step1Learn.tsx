@@ -293,7 +293,7 @@ export const Step1Learn: React.FC<Step1LearnProps> = ({ onNext }) => {
               <div className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-xs text-rose-800 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
                 <p className="leading-relaxed">
-                  우울감이나 무기력이 2주 이상 지속되고 학교생활이 어렵다면, 단순 사춘기로 넘기지 말고 <strong className="text-rose-950">보건실, 위(Wee)클래스 상담선생님, 보호자</strong>에게 꼭 도움을 요청하세요.
+                  우울감이나 무기력이 2주 이상 지속되고 학교생활이 어렵다면, 단순 사춘기로 넘기지 말고 <strong className="text-rose-950">위(Wee)클래스 상담선생님, 보호자, 담임선생님</strong>에게 꼭 도움을 요청하세요.
                 </p>
               </div>
             </motion.div>
@@ -357,7 +357,7 @@ export const Step1Learn: React.FC<Step1LearnProps> = ({ onNext }) => {
                   <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">5</span>
                   <div>
                     <strong>CONNECT (연결하기)</strong>
-                    <p className="text-[11px] text-slate-500">혼자 버겁다면 친구나 보건실 선생님에게 털어놓기.</p>
+                    <p className="text-[11px] text-slate-500">혼자 버겁다면 친구나 담임선생님, 위(Wee)클래스 상담선생님에게 털어놓기.</p>
                   </div>
                 </div>
               </div>
