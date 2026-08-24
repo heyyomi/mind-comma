@@ -1,0 +1,6 @@
+{
+  "name": "마음쉼표 스트레스프리데이",
+  "description": "초·중·고 학급에서 스트레스를 이해하고, 자가진단하며, 힐링 관리법 체험 및 구글 시트 실시간 연동으로 다짐을 공유하는 힐링 웹앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
