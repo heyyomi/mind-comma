@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lock, KeyRound, ShieldCheck, X, AlertCircle, Sparkles, Settings2 } from 'lucide-react';
-import { verifyAdminPin, setAdminPin } from '../services/googleSheets';
+import { verifyAdminPin, setAdminPin, syncAdminPinFromRemote } from '../services/googleSheets';
 
 interface AdminAuthModalProps {
   isOpen: boolean;
@@ -30,6 +30,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   const [newPinInput, setNewPinInput] = useState('');
   const [newPinConfirm, setNewPinConfirm] = useState('');
   const [changeSuccessMsg, setChangeSuccessMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +40,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
       setErrorMsg('');
       setIsChangingPin(false);
       setChangeSuccessMsg('');
+      syncAdminPinFromRemote(); // 모달 열릴 때 원격 구글 시트로부터 최신 PIN 확인
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -62,7 +64,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     }
   };
 
-  const handleChangePinSubmit = (e: React.FormEvent) => {
+  const handleChangePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verifyAdminPin(currentPinInput)) {
       setErrorMsg('현재 비밀번호가 일치하지 않습니다.');
@@ -77,7 +79,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
       return;
     }
 
-    const success = setAdminPin(newPinInput);
+    setIsSaving(true);
+    const success = await setAdminPin(newPinInput);
+    setIsSaving(false);
+
     if (success) {
       setChangeSuccessMsg('비밀번호가 성공적으로 변경되었습니다!');
       setErrorMsg('');

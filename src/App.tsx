@@ -1,7 +1,7 @@
 import { useState, useEffect, useId } from 'react';
 import confetti from 'canvas-confetti';
 import { StepId, CheckinResult, PlanData, GoogleSheetConfig, ToastMessage, StressTier } from './types';
-import { getSavedConfig, submitCheckinRecord, submitPlanRecord, submitConcernRecord } from './services/googleSheets';
+import { getSavedConfig, submitCheckinRecord, submitPlanRecord, submitConcernRecord, syncAdminPinFromRemote } from './services/googleSheets';
 import { Header } from './components/Header';
 import { StepIntro } from './components/StepIntro';
 import { Step1Learn } from './components/Step1Learn';
@@ -95,12 +95,14 @@ export default function App() {
     }
   };
 
-  // URL 쿼리 파라미터 확인 (?board=1 이면 전자칠판 뷰로 바로 시작)
+  // URL 쿼리 파라미터 확인 및 원격 PIN 동기화
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('board') === '1') {
       setIsBoardView(true);
     }
+    // 다른 기기나 브라우저에서 변경된 최신 PIN이 있다면 동기화 수신
+    syncAdminPinFromRemote();
   }, []);
 
   // STEP 2 퀴즈 문항 선택 처리

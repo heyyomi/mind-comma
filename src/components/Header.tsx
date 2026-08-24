@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm sm:text-base">
-                <span>마음 쉼표</span>
+                <span>온기, 마음 쉼표</span>
                 <span className="text-xs font-sans font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
                   스트레스 Free Day
                 </span>

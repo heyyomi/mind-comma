@@ -27,7 +27,7 @@ export const StepIntro: React.FC<StepIntroProps> = ({ onStart, schoolName, class
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-snug mb-3 tracking-tight">
-        마음 쉼표,<br />
+        온기, 마음 쉼표<br />
         <span className="text-indigo-600 underline decoration-indigo-200 decoration-4 underline-offset-4">
           스트레스 Free Day
         </span>

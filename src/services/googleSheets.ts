@@ -1,7 +1,7 @@
 import { CheckinResult, ClassroomBoardNote, ConcernNote, GoogleSheetConfig, PlanData } from '../types';
 
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
- * [마음 쉼표, 스트레스 Free Day] Google Apps Script (Code.gs)
+ * [온기, 마음 쉼표, 스트레스 Free Day] Google Apps Script (Code.gs)
  * 
  * 1. 이 코드를 복사하여 구글 시트 > [확장 프로그램] > [Apps Script] 에 붙여넣으세요.
  * 2. 상단 [배포] > [새 배포] > 유형: [웹 앱] 선택
@@ -14,6 +14,15 @@ function doGet(e) {
   lock.tryLock(10000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = e && e.parameter ? e.parameter.action : "";
+    
+    // 관리자 PIN 조회 요청
+    if (action === "getPin") {
+      var configSheet = getOrCreateConfigSheet(ss);
+      var pinVal = configSheet.getRange("B1").getValue();
+      return createJsonResponse({ status: "success", pin: String(pinVal || "1234") });
+    }
+
     var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
     var data = sheet.getDataRange().getValues();
     
@@ -45,8 +54,17 @@ function doPost(e) {
   lock.tryLock(10000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
     var body = e.postData ? JSON.parse(e.postData.contents) : e.parameter;
+    
+    // 관리자 PIN 변경 요청 처리
+    if (body && body.action === "updatePin") {
+      var newPin = String(body.newPin || "1234").trim();
+      var configSheet = getOrCreateConfigSheet(ss);
+      configSheet.getRange("B1").setValue(newPin);
+      return createJsonResponse({ status: "success", message: "관리자 PIN이 원격 시트에 동기화되었습니다.", pin: newPin });
+    }
+
+    var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
     
     var now = new Date();
     var timeString = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd HH:mm:ss");
@@ -93,6 +111,17 @@ function getOrCreateSheet(ss, name) {
   return sheet;
 }
 
+function getOrCreateConfigSheet(ss) {
+  var sheet = ss.getSheetByName("마음쉼표_설정");
+  if (!sheet) {
+    sheet = ss.insertSheet("마음쉼표_설정");
+    sheet.appendRow(["항목", "설정값"]);
+    sheet.appendRow(["관리자_PIN", "1234"]);
+    sheet.getRange(1, 1, 1, 2).setBackground("#FEF3C7").setFontWeight("bold");
+  }
+  return sheet;
+}
+
 function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
@@ -117,11 +146,56 @@ export const getAdminPin = (): string => {
   return DEFAULT_ADMIN_PIN;
 };
 
-export const setAdminPin = (newPin: string): boolean => {
+// 원격 구글 시트에서 관리자 PIN 동기화 가져오기
+export const syncAdminPinFromRemote = async (): Promise<string> => {
+  const config = getSavedConfig();
+  if (!config.webAppUrl) return getAdminPin();
+
+  try {
+    const url = config.webAppUrl.includes('?') 
+      ? `${config.webAppUrl}&action=getPin`
+      : `${config.webAppUrl}?action=getPin`;
+      
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (response.ok) {
+      const json = await response.json();
+      if (json && json.status === 'success' && json.pin) {
+        const remotePin = String(json.pin).trim();
+        if (remotePin) {
+          localStorage.setItem(ADMIN_PIN_KEY, remotePin);
+          return remotePin;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not sync admin PIN from Google Sheet:', e);
+  }
+  return getAdminPin();
+};
+
+export const setAdminPin = async (newPin: string): Promise<boolean> => {
   try {
     const cleanPin = newPin.trim();
     if (!cleanPin) return false;
     localStorage.setItem(ADMIN_PIN_KEY, cleanPin);
+
+    // 원격 구글 시트가 연결되어 있다면 시트에도 동기화 전송
+    const config = getSavedConfig();
+    if (config.webAppUrl) {
+      try {
+        await fetch(config.webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'updatePin',
+            newPin: cleanPin,
+          }),
+          mode: 'no-cors',
+        });
+      } catch (err) {
+        console.warn('Could not update PIN to remote sheet:', err);
+      }
+    }
     return true;
   } catch (e) {
     console.error('Failed to set admin PIN:', e);

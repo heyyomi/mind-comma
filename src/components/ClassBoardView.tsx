@@ -119,7 +119,7 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium">
-              {config.schoolName} · {config.className} 실시간 전자칠판
+              {config.schoolName} · {config.className} 온기, 마음 쉼표 실시간 전자칠판
             </p>
           </div>
         </div>
