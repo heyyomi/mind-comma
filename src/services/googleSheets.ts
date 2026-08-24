@@ -705,7 +705,11 @@ export const fetchClassData = async (): Promise<{
 
   if (config.webAppUrl) {
     try {
-      const response = await fetch(config.webAppUrl, {
+      const fetchUrl = config.webAppUrl.includes('?')
+        ? `${config.webAppUrl}&_t=${Date.now()}`
+        : `${config.webAppUrl}?_t=${Date.now()}`;
+
+      const response = await fetch(fetchUrl, {
         method: 'GET',
         mode: 'cors',
       });
@@ -716,7 +720,7 @@ export const fetchClassData = async (): Promise<{
           remotePlans = json.items
             .filter((item: any) => (item['실천방법'] || item.method) && item['유형'] !== '고민나눔')
             .map((item: any, idx: number) => ({
-              id: 'remote-plan-' + idx + '-' + Date.now(),
+              id: 'remote-plan-' + idx + '-' + (item['일시'] || idx),
               method: item['실천방법'] || item.method || '',
               reason: item['선택이유'] || item.reason || '',
               when: item['실천시기'] || item.whenTime || '',
@@ -736,7 +740,7 @@ export const fetchClassData = async (): Promise<{
               const catRaw = item['주요원인'] || item.categories || '';
               const categories = typeof catRaw === 'string' ? catRaw.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
               return {
-                id: 'remote-concern-' + idx + '-' + Date.now(),
+                id: 'remote-concern-' + idx + '-' + (item['일시'] || idx),
                 studentName: item['이름'] || item.studentName || '익명 친구',
                 gradeClass: item['학급'] || item.gradeClass || '우리 반',
                 categories,
@@ -756,8 +760,36 @@ export const fetchClassData = async (): Promise<{
   const localPlans = getLocalNotes();
   const localConcerns = getLocalConcerns();
 
-  const finalPlans = remotePlans.length > 0 ? remotePlans : localPlans;
-  const finalConcerns = remoteConcerns.length > 0 ? remoteConcerns : localConcerns;
+  // 원격 데이터와 로컬 데이터를 통합 (중복 방지)
+  let finalPlans: ClassroomBoardNote[] = [...remotePlans];
+  if (localPlans.length > 0) {
+    localPlans.forEach((lp) => {
+      const existsInRemote = remotePlans.some(
+        (rp) =>
+          rp.studentName === lp.studentName &&
+          rp.method === lp.method &&
+          (rp.createdAt?.slice(0, 10) === lp.createdAt?.slice(0, 10) || rp.createdAt === lp.createdAt)
+      );
+      if (!existsInRemote) {
+        finalPlans.push(lp);
+      }
+    });
+  }
+
+  let finalConcerns: ConcernNote[] = [...remoteConcerns];
+  if (localConcerns.length > 0) {
+    localConcerns.forEach((lc) => {
+      const existsInRemote = remoteConcerns.some(
+        (rc) =>
+          rc.studentName === lc.studentName &&
+          rc.situation === lc.situation &&
+          (rc.createdAt?.slice(0, 10) === lc.createdAt?.slice(0, 10) || rc.createdAt === lc.createdAt)
+      );
+      if (!existsInRemote) {
+        finalConcerns.push(lc);
+      }
+    });
+  }
 
   return {
     plans: finalPlans,

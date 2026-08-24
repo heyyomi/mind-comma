@@ -141,6 +141,17 @@ export const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({
             </div>
           </div>
 
+          {/* 기기 간 통합 연결 및 QR 안내 */}
+          <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-100 space-y-2 shadow-xs">
+            <div className="font-semibold text-indigo-900 flex items-center gap-1.5 text-xs">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <span>📱 모바일과 PC 데이터 실시간 자동 통합 방법</span>
+            </div>
+            <p className="text-xs text-indigo-800 leading-relaxed">
+              PC에서 구글 시트 URL을 1회만 등록해두면, 상단의 <strong>[학생 QR]</strong> 버튼을 눌러 나오는 QR 코드를 스마트폰 카메라로 비추는 것만으로 모든 학생의 휴대폰이 PC와 동일한 시트로 자동 연결되어 데이터가 한곳에 실시간 통합됩니다.
+            </p>
+          </div>
+
           {/* 4단계 연동 안내 가이드 */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-2.5 shadow-xs">
             <div className="font-semibold text-indigo-600 flex items-center gap-1.5 text-xs">

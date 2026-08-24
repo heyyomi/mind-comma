@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Monitor, Leaf, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Database, Monitor, Leaf, CheckCircle2, ChevronRight, QrCode } from 'lucide-react';
 import { StepId, GoogleSheetConfig } from '../types';
 
 interface HeaderProps {
@@ -8,6 +8,7 @@ interface HeaderProps {
   config: GoogleSheetConfig;
   onOpenSheetModal: () => void;
   onOpenBoardView: () => void;
+  onOpenQrModal: () => void;
   onSelectStep: (step: StepId) => void;
 }
 
@@ -26,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   config,
   onOpenSheetModal,
   onOpenBoardView,
+  onOpenQrModal,
   onSelectStep,
 }) => {
   return (
@@ -51,11 +53,21 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* 학생/모바일 QR 참여 버튼 */}
+            <button
+              onClick={onOpenQrModal}
+              title="학생 휴대폰 참여 QR 코드 열기"
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-all shadow-xs"
+            >
+              <QrCode className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="hidden sm:inline">학생 QR</span>
+            </button>
+
             {/* 구글 시트 연동 상태 버튼 (교사용 관리자) */}
             <button
               onClick={onOpenSheetModal}
               title="구글 시트 연동 설정 (관리자 전용)"
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all shadow-xs ${
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-xl border transition-all shadow-xs ${
                 config.isConnected || config.webAppUrl
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -75,11 +87,11 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 전자칠판 전체화면 모드 버튼 (교사용 관리자) */}
             <button
               onClick={onOpenBoardView}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all"
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all"
               title="전자칠판/대형 화면 모드로 열기 (관리자 전용)"
             >
               <Monitor className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">전자칠판 게시판</span>
+              <span className="hidden sm:inline">전자칠판</span>
             </button>
           </div>
         </div>

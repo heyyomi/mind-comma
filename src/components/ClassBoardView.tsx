@@ -11,6 +11,7 @@ import {
   clearAllDataAndRemote,
   generateClassroomShareUrl,
 } from '../services/googleSheets';
+import { ClassQrModal } from './ClassQrModal';
 import {
   X,
   RefreshCw,
@@ -26,6 +27,7 @@ import {
   Share2,
   AlertTriangle,
   Check,
+  QrCode,
 } from 'lucide-react';
 
 interface ClassBoardViewProps {
@@ -51,6 +53,7 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const loadData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -224,6 +227,16 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
 
         {/* 우측 관리 액션 버튼들 */}
         <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 self-end sm:self-auto">
+          {/* 학생 참여 QR 코드 열기 버튼 */}
+          <button
+            onClick={() => setIsQrModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white transition-all shadow-xs"
+            title="학생들이 스마트폰으로 참여할 수 있는 대형 QR 코드 열기"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>학생 참여 QR</span>
+          </button>
+
           {/* 기기 간 동기화 공유 링크 복사 버튼 */}
           <button
             onClick={handleCopyShareLink}
@@ -231,7 +244,7 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
             title="학생/다른 휴대폰에서 설정과 비밀번호를 그대로 열 수 있는 링크 복사"
           >
             {isLinkCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5 text-indigo-600" />}
-            <span>{isLinkCopied ? '복사 완료!' : '학급 링크 공유'}</span>
+            <span>{isLinkCopied ? '복사 완료!' : '링크 복사'}</span>
           </button>
 
           <button
@@ -586,6 +599,14 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* 스마트폰 학생 참여 QR 코드 모달 */}
+      <ClassQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        config={config}
+        onShowToast={onShowToast}
+      />
     </div>
   );
 };

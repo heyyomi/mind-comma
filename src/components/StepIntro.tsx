@@ -1,13 +1,16 @@
 import React from 'react';
-import { ArrowRight, Sparkles, HeartHandshake, Smile, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Sparkles, HeartHandshake, Smile, ShieldCheck, CheckCircle2, QrCode, Smartphone } from 'lucide-react';
+import { GoogleSheetConfig } from '../types';
 
 interface StepIntroProps {
   onStart: () => void;
-  schoolName: string;
-  className: string;
+  config: GoogleSheetConfig;
+  onOpenQrModal?: () => void;
 }
 
-export const StepIntro: React.FC<StepIntroProps> = ({ onStart, schoolName, className }) => {
+export const StepIntro: React.FC<StepIntroProps> = ({ onStart, config, onOpenQrModal }) => {
+  const isSheetConnected = Boolean(config.webAppUrl);
+
   return (
     <div className="flex flex-col items-center text-center max-w-lg mx-auto py-6 sm:py-10 px-4">
       {/* 쉼표 모티프 백그라운드 디자인 */}
@@ -21,9 +24,29 @@ export const StepIntro: React.FC<StepIntroProps> = ({ onStart, schoolName, class
         </div>
       </div>
 
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold mb-3">
-        <Sparkles className="w-3.5 h-3.5" />
-        <span>{schoolName} · {className}</span>
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{config.schoolName || '온기 학교'} · {config.className || '우리 반'}</span>
+        </div>
+
+        {isSheetConnected ? (
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>실시간 구글 시트 통합 연결됨</span>
+          </div>
+        ) : (
+          onOpenQrModal && (
+            <button
+              onClick={onOpenQrModal}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200 hover:bg-amber-100 transition-all cursor-pointer"
+              title="QR 코드로 접속하면 PC와 데이터가 실시간 통합됩니다"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-600" />
+              <span>📱 QR로 학급 통합 참여</span>
+            </button>
+          )
+        )}
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-snug mb-3 tracking-tight">

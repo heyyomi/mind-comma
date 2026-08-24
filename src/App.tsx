@@ -13,6 +13,7 @@ import { Step6Complete } from './components/Step6Complete';
 import { ClassBoardView } from './components/ClassBoardView';
 import { GoogleSheetModal } from './components/GoogleSheetModal';
 import { AdminAuthModal } from './components/AdminAuthModal';
+import { ClassQrModal } from './components/ClassQrModal';
 import { Toast } from './components/Toast';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<StepId>(0);
   const [isBoardView, setIsBoardView] = useState(false);
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [config, setConfig] = useState<GoogleSheetConfig>(getSavedConfig());
 
   // 관리자 인증 모달 상태
@@ -257,6 +259,7 @@ export default function App() {
         config={config}
         onOpenSheetModal={() => handleOpenAdminProtected('sheet')}
         onOpenBoardView={() => handleOpenAdminProtected('board')}
+        onOpenQrModal={() => setIsQrModalOpen(true)}
         onSelectStep={(s) => setCurrentStep(s)}
       />
 
@@ -281,9 +284,9 @@ export default function App() {
 
         {currentStep === 0 && (
           <StepIntro
-            schoolName={config.schoolName}
-            className={config.className}
+            config={config}
             onStart={() => setCurrentStep(1)}
+            onOpenQrModal={() => setIsQrModalOpen(true)}
           />
         )}
 
@@ -390,6 +393,14 @@ export default function App() {
         isOpen={isSheetModalOpen}
         onClose={() => setIsSheetModalOpen(false)}
         onSaveConfig={(newCfg) => setConfig(newCfg)}
+        onShowToast={showToast}
+      />
+
+      {/* 스마트폰 학생 참여 QR 코드 모달 */}
+      <ClassQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        config={config}
         onShowToast={showToast}
       />
 
