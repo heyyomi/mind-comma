@@ -12,6 +12,7 @@ import {
   Sparkles,
   Disc3,
   Radio,
+  Tv,
 } from 'lucide-react';
 
 interface MusicPlayerCardProps {
@@ -25,6 +26,7 @@ export const MusicPlayerCard: React.FC<MusicPlayerCardProps> = ({ autoPlay = tru
   );
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const song: RecommendedSong = NURSE_PLAYLIST[currentSongIndex];
 
@@ -45,20 +47,20 @@ export const MusicPlayerCard: React.FC<MusicPlayerCardProps> = ({ autoPlay = tru
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      // 따뜻한 삼각파 + 부드러운 사인파 혼합 효과를 위한 삼각파
+      // 따뜻한 삼각파 + 부드러운 사인파 혼합 느낌
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
 
-      // 엔벨로프 (부드러운 타악 벨 느낌)
+      // 엔벨로프 (부드러운 오르골/피아노 벨 어택)
       gain.gain.setValueAtTime(0.001, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.65);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.6);
+      osc.stop(ctx.currentTime + 0.7);
     } catch {
       // 무시
     }
@@ -88,7 +90,7 @@ export const MusicPlayerCard: React.FC<MusicPlayerCardProps> = ({ autoPlay = tru
 
   // 멜로디 루프 타이머 처리
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && !showVideo) {
       if (timerRef.current) window.clearInterval(timerRef.current);
 
       noteIndexRef.current = 0;
@@ -115,7 +117,7 @@ export const MusicPlayerCard: React.FC<MusicPlayerCardProps> = ({ autoPlay = tru
         timerRef.current = null;
       }
     };
-  }, [isPlaying, currentSongIndex, isMuted]);
+  }, [isPlaying, currentSongIndex, isMuted, showVideo]);
 
   // 마운트 시 자동 재생 시도
   useEffect(() => {
@@ -221,7 +223,7 @@ export const MusicPlayerCard: React.FC<MusicPlayerCardProps> = ({ autoPlay = tru
               }`}
             />
             <span className="text-[10px] text-slate-400 pl-1.5">
-              {isPlaying ? '따뜻한 힐링 멜로디 연주 중 🎶' : '멜로디 일시정지'}
+              {showVideo ? '실제 원곡 스트리밍 재생 중 🎧' : isPlaying ? '힐링 멜로디 연주 중 🎶' : '멜로디 일시정지'}
             </span>
           </div>
         </div>
@@ -231,66 +233,112 @@ export const MusicPlayerCard: React.FC<MusicPlayerCardProps> = ({ autoPlay = tru
       <div className="p-3.5 sm:p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 relative z-10 space-y-1.5">
         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
           <Heart className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-          <span>보건샘의 다정한 한마디</span>
+          <span>보건샘의 다정한 응원 한마디</span>
         </div>
         <p className="text-xs sm:text-sm text-slate-100 leading-relaxed font-medium">
           "{song.cheerMessage}"
         </p>
       </div>
 
+      {/* 실제 원곡 스트리밍 플레이어 (내장 플레이어 지원) */}
+      {showVideo && (
+        <div className="relative z-10 rounded-2xl overflow-hidden bg-black/80 border border-white/20 p-2 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-inner">
+            <iframe
+              className="w-full h-full object-cover"
+              src={`https://www.youtube-nocookie.com/embed/${song.youtubeEmbedId || ''}?autoplay=1&rel=0&modestbranding=1`}
+              title={`${song.artist} - ${song.title}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-slate-300">
+            <span>🎵 {song.artist} - {song.title} 원곡 재생 중</span>
+            <button
+              onClick={() => setShowVideo(false)}
+              className="text-xs text-rose-300 hover:text-rose-100 font-semibold px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 하단 컨트롤러 바 */}
-      <div className="flex items-center justify-between gap-2 pt-1 relative z-10">
+      <div className="flex items-center justify-between gap-2 pt-1 relative z-10 flex-wrap">
         <div className="flex items-center gap-2">
-          {/* 재생 / 일시정지 버튼 */}
+          {/* 실제 원곡 영상/음악 바로 재생 토글 */}
           <button
-            onClick={handleTogglePlay}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs shadow-md transition-all active:scale-95"
-            title={isPlaying ? '멜로디 일시정지' : '멜로디 재생'}
+            onClick={() => {
+              stopPlayback();
+              setShowVideo((prev) => !prev);
+            }}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 ${
+              showVideo
+                ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                : 'bg-rose-600 hover:bg-rose-500 text-white'
+            }`}
+            title="앱 내에서 실제 원곡 바로 듣기"
           >
-            {isPlaying ? (
-              <>
-                <Pause className="w-3.5 h-3.5 fill-slate-900" />
-                <span>일시정지</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-slate-900" />
-                <span>멜로디 듣기</span>
-              </>
-            )}
+            <Tv className="w-3.5 h-3.5" />
+            <span>{showVideo ? '원곡 닫기' : '🎧 실제 원곡 듣기'}</span>
           </button>
+
+          {/* 멜로디 사운드 재생 / 일시정지 */}
+          {!showVideo && (
+            <button
+              onClick={handleTogglePlay}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs border border-white/10 transition-all active:scale-95"
+              title={isPlaying ? '멜로디 일시정지' : '배경 멜로디 재생'}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-3.5 h-3.5 fill-white" />
+                  <span>멜로디 멈춤</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>멜로디</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* 랜덤 다음 곡 추천 버튼 */}
           <button
-            onClick={handleNextSong}
+            onClick={() => {
+              handleNextSong();
+            }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs border border-white/10 transition-all active:scale-95"
             title="다른 추천곡 듣기"
           >
             <Shuffle className="w-3.5 h-3.5" />
-            <span>다른 곡</span>
+            <span>다른 노래</span>
           </button>
         </div>
 
-        {/* 오른쪽 음소거 & 유튜브 원곡 링크 */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setIsMuted((m) => !m)}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition-all"
-            title={isMuted ? '음소거 해제' : '음소거'}
-          >
-            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
-          </button>
+        {/* 오른쪽 음소거 & 유튜브 새 창 열기 */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          {!showVideo && (
+            <button
+              onClick={() => setIsMuted((m) => !m)}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition-all"
+              title={isMuted ? '음소거 해제' : '음소거'}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          )}
 
           <a
             href={song.youtubeSearchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white font-semibold text-xs transition-all shadow-xs"
-            title="YouTube에서 원곡 완곡 듣기"
+            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white font-semibold text-xs transition-all border border-white/10"
+            title="YouTube 새 창에서 검색하기"
           >
-            <Disc3 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">원곡 듣기</span>
-            <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">유튜브</span>
           </a>
         </div>
       </div>
