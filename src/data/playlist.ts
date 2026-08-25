@@ -8,9 +8,7 @@ export interface RecommendedSong {
   accentColor: string;
   cheerMessage: string;
   youtubeSearchUrl: string;
-  youtubeEmbedId?: string; // YouTube official video / audio ID
-  melodyNotes: number[]; // Web Audio synthesized frequencies
-  tempoMs: number;
+  youtubeEmbedId: string; // YouTube official video / audio ID
 }
 
 export const NURSE_PLAYLIST: RecommendedSong[] = [
@@ -25,9 +23,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '슬픔도 기쁨도 모두 너라는 아름다운 마음의 조각들이란다. 지금 느끼는 모든 감정은 충분히 소중해 💚',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=AKMU+기쁨+슬픔+아름다운+마음',
-    youtubeEmbedId: 'M-mEaN6Y62Y', // AKMU 공식 클립/음원 ID
-    melodyNotes: [523.25, 659.25, 783.99, 659.25, 880.0, 783.99, 659.25, 587.33, 523.25],
-    tempoMs: 380,
+    youtubeEmbedId: 'M-mEaN6Y62Y',
   },
   {
     id: 'akmu-lovelee',
@@ -40,9 +36,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '너는 존재 자체로 너무 사랑스럽고 반짝이는 사람이야! 너만의 매력으로 오늘 하루도 자신 있게! 🌟',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=AKMU+Love+Lee',
-    youtubeEmbedId: 'EIz09kLzN9k', // AKMU - Love Lee Official MV
-    melodyNotes: [659.25, 659.25, 783.99, 880.0, 987.77, 880.0, 783.99, 659.25, 587.33],
-    tempoMs: 280,
+    youtubeEmbedId: 'EIz09kLzN9k',
   },
   {
     id: 'akmu-nakwon',
@@ -55,9 +49,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '지친 너의 마음에 작은 쉼터가 되어줄게. 복잡한 생각은 잠시 내려놓고 마음의 낙원을 만나보렴 ☁️',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=AKMU+낙원',
-    youtubeEmbedId: '5Z13t7-7kGE', // AKMU - 낙원
-    melodyNotes: [587.33, 659.25, 783.99, 880.0, 783.99, 659.25, 587.33, 523.25],
-    tempoMs: 360,
+    youtubeEmbedId: '5Z13t7-7kGE',
   },
   {
     id: 'soran-study-you',
@@ -70,9 +62,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '네가 무엇을 좋아하고 어떤 때 행복한지, 너 자신을 더 많이 알아가고 아껴주는 소중한 하루가 되길 바라 🌼',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=소란+너를+공부해',
-    youtubeEmbedId: '6bWq9lJ1x5o', // 소란 - 너를 공부해
-    melodyNotes: [659.25, 783.99, 880.0, 987.77, 880.0, 783.99, 659.25, 523.25],
-    tempoMs: 310,
+    youtubeEmbedId: '6bWq9lJ1x5o',
   },
   {
     id: 'txt-134340',
@@ -86,8 +76,6 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
       '남들과 조금 다른 궤도를 돌고 있어도 괜찮아. 넌 우주에서 오직 하나뿐인 신비롭고 아름다운 별이야 🪐✨',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=투모로우바이투게더+134340',
     youtubeEmbedId: '7Q3oYJ9z6eY',
-    melodyNotes: [523.25, 622.25, 659.25, 783.99, 880.0, 783.99, 659.25, 523.25],
-    tempoMs: 340,
   },
   {
     id: 'gaho-start',
@@ -100,9 +88,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '원하는 대로 다 가질 수 있어, 우리들의 꿈은 지금부터 시작이야! 가슴 뛰는 너의 내일을 열렬히 응원해! 💥',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=가호+시작',
-    youtubeEmbedId: 'O0StKlRHVeE', // 가호 - 시작 MV
-    melodyNotes: [523.25, 659.25, 783.99, 1046.5, 987.77, 880.0, 783.99, 880.0, 1046.5],
-    tempoMs: 270,
+    youtubeEmbedId: 'O0StKlRHVeE',
   },
   {
     id: 'day6-happy',
@@ -115,9 +101,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '어쩌면 오늘도 울고 싶었을지 모를 너에게, 내일은 반드시 활짝 웃을 수 있는 진짜 행복이 찾아올 거야 ☀️',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=DAY6+HAPPY',
-    youtubeEmbedId: 'wFk4c0n_5Vw', // DAY6 - HAPPY
-    melodyNotes: [659.25, 783.99, 880.0, 1046.5, 880.0, 783.99, 659.25, 587.33],
-    tempoMs: 290,
+    youtubeEmbedId: 'wFk4c0n_5Vw',
   },
   {
     id: 'doyoung-spring',
@@ -130,9 +114,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '시린 겨울이 지나면 반드시 눈부신 봄이 오듯, 너의 마음속에도 따스한 꽃이 곧 피어날 거야 🌸',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=도영+새봄의+노래',
-    youtubeEmbedId: 'f0Xz4z4p3mU', // 도영 - 새봄의 노래
-    melodyNotes: [523.25, 587.33, 659.25, 783.99, 880.0, 783.99, 659.25, 523.25],
-    tempoMs: 380,
+    youtubeEmbedId: 'f0Xz4z4p3mU',
   },
   {
     id: 'doyoung-firefly',
@@ -145,9 +127,7 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
     cheerMessage:
       '작은 반딧불 하나의 빛도 온 방안을 따스하게 비추듯, 너라는 존재는 누군가에게 커다란 희망이자 빛이란다 💛',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=도영+반딧불',
-    youtubeEmbedId: 'v83VpZ1qLMc', // 도영 - 반딧불 (Little Light)
-    melodyNotes: [440.0, 523.25, 659.25, 783.99, 880.0, 987.77, 880.0, 659.25],
-    tempoMs: 330,
+    youtubeEmbedId: 'v83VpZ1qLMc',
   },
   {
     id: 'jannabi-green',
@@ -161,7 +141,5 @@ export const NURSE_PLAYLIST: RecommendedSong[] = [
       '풋풋한 우리들의 모든 순간이 푸른 여름날처럼 찬란해. 지친 마음 훌훌 털고 다시 힘차게 걸어가 보자 🌿',
     youtubeSearchUrl: 'https://www.youtube.com/results?search_query=잔나비+초록을거머쥔우리는',
     youtubeEmbedId: 'W1qWfQn54s8',
-    melodyNotes: [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 880.0, 783.99, 659.25],
-    tempoMs: 360,
   },
 ];
