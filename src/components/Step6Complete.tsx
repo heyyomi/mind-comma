@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { toPng } from 'html-to-image';
 import { CheckinResult, PlanData } from '../types';
 import { Download, Mail, Check, RotateCcw, Monitor, FileText, HeartHandshake, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { MusicPlayerCard } from './MusicPlayerCard';
 
 interface Step6CompleteProps {
   checkin: CheckinResult | null;
@@ -245,6 +246,9 @@ export const Step6Complete: React.FC<Step6CompleteProps> = ({
           * 버튼을 누르면 기본 메일 앱이 열리며 내용이 자동 입력됩니다.
         </p>
       </div>
+
+      {/* 보건샘 추천 플레이리스트 & 힐링 음악 카드 */}
+      <MusicPlayerCard autoPlay={false} />
 
       {/* 하단 보조 액션 버튼들 */}
       <div className="flex flex-col sm:flex-row gap-2 pt-2">

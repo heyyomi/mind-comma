@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { PlanData } from '../types';
-import { Send, Sparkles, Heart, Clock, Target, HelpCircle, User, ArrowRight } from 'lucide-react';
+import { Send, Sparkles, Heart, Clock, Target, HelpCircle, User, ArrowRight, Music } from 'lucide-react';
+import { MusicPlayerCard } from './MusicPlayerCard';
 
 interface Step5PlanProps {
   plan: PlanData;
@@ -195,36 +196,42 @@ export const Step5Plan: React.FC<Step5PlanProps> = ({
       </div>
 
       {hasSubmitted ? (
-        <div className="bg-gradient-to-r from-amber-50 via-indigo-50 to-emerald-50 rounded-[24px] p-4 sm:p-5 border border-amber-200 shadow-sm space-y-3 animate-in fade-in">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-900 flex items-center justify-center text-xl shrink-0 shadow-xs">
-              🎁
-            </div>
-            <div>
-              <h4 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
-                <span>보거니 관리자에게 보여주세요!</span>
-                <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
-                  상품 수령 단계
-                </span>
-              </h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                작성한 실천 다짐 화면을 보거니(보건 선생님/담당자)에게 보여주고 확인 암호를 입력받으세요. 멋진 선물과 함께 완료 리포트로 이동합니다!
-              </p>
-            </div>
-          </div>
+        <div className="space-y-4 animate-in fade-in duration-300">
+          {/* 보건샘 추천 플레이리스트 & 힐링 음악 카드 */}
+          <MusicPlayerCard autoPlay={true} />
 
-          <button
-            onClick={onNext}
-            className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
-          >
-            <span>🎁 보거니 관리자 확인 & 선물 받기</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {/* 보거니 관리자 확인 & 선물 받기 카드 */}
+          <div className="bg-gradient-to-r from-amber-50 via-indigo-50 to-emerald-50 rounded-[24px] p-4 sm:p-5 border border-amber-200 shadow-sm space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-900 flex items-center justify-center text-xl shrink-0 shadow-xs">
+                🎁
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
+                  <span>보거니 관리자에게 보여주세요!</span>
+                  <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                    상품 수령 단계
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  작성한 실천 다짐과 추천 음악을 감상한 후, 보거니(보건 선생님/담당자)에게 보여주고 확인 암호를 입력받으세요. 멋진 선물과 함께 최종 완료 리포트로 이동합니다!
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onNext}
+              className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
+            >
+              <span>🎁 보거니 관리자 확인 & 선물 받기</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       ) : (
         <div className="text-center pt-2">
           <p className="text-xs text-slate-400">
-            * 위의 실천 방법을 입력하고 [종이비행기 날리기]를 완료하면 보거니 관리자 확인 단계가 열립니다.
+            * 위의 실천 방법을 입력하고 [종이비행기 날리기]를 완료하면 보건샘의 힘나는 추천 노래와 관리자 확인 단계가 열립니다 🎵
           </p>
         </div>
       )}
