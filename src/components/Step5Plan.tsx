@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { PlanData } from '../types';
-import { Send, Sparkles, Heart, Clock, Target, HelpCircle, User, ArrowRight, Music } from 'lucide-react';
+import { Send, Sparkles, Heart, Clock, Target, HelpCircle, User, ArrowRight, MapPin } from 'lucide-react';
 import { MusicPlayerCard } from './MusicPlayerCard';
 
 interface Step5PlanProps {
@@ -117,32 +117,33 @@ export const Step5Plan: React.FC<Step5PlanProps> = ({
               maxLength={30}
               value={plan.when}
               onChange={(e) => onChangePlan('when', e.target.value)}
-              placeholder="예: 매일 저녁 자기 전 침대에서"
+              placeholder="예: 매일 저녁 자기 전 / 하교 후"
               className="w-full p-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-800"
             />
           </div>
 
-          {/* 어떻게? */}
+          {/* 어디서 & 얼마나(몇 분)? */}
           <div>
             <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 mb-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>어떻게 실천할까요?</span>
+              <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+              <span>어디서, 얼마나(몇 분) 실천할까요?</span>
             </label>
             <input
               type="text"
               maxLength={30}
               value={plan.how}
               onChange={(e) => onChangePlan('how', e.target.value)}
-              placeholder="예: 스마트폰 내려놓고 3분간 심호흡"
+              placeholder="예: 내 방 침대에서 5분 동안 / 책상에서 3분간"
               className="w-full p-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-800"
             />
           </div>
         </div>
 
-        {/* 어떤 변화를 기대하나요? */}
+        {/* 어떤 긍정적인 변화를 기대하나요? */}
         <div>
-          <label className="text-xs font-semibold text-slate-800 block mb-1.5">
-            어떤 긍정적인 변화를 기대하나요?
+          <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 mb-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>✨ 어떤 긍정적인 변화를 기대하나요?</span>
           </label>
           <textarea
             rows={2}

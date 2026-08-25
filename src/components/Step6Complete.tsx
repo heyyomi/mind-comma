@@ -53,7 +53,7 @@ export const Step6Complete: React.FC<Step6CompleteProps> = ({
       `- 작성자: ${plan.studentName || '익명'}`,
       `- 실천 방법: ${plan.method || '미작성'}`,
       `- 선택한 이유: ${plan.reason || '미작성'}`,
-      `- 실천 시기/방법: ${plan.when || '-'} / ${plan.how || '-'}`,
+      `- 실천 시기/장소·시간: ${plan.when || '-'} / ${plan.how || '-'}`,
       `- 기대하는 변화: ${plan.expect || '미작성'}`,
       `- 나에게 보내는 응원: ${plan.cheer || '미작성'}`,
       ``,
@@ -179,7 +179,13 @@ export const Step6Complete: React.FC<Step6CompleteProps> = ({
               )}
               {plan.when && (
                 <p className="text-[11px] text-indigo-800">
-                  <strong>시기/방법:</strong> {plan.when} · {plan.how}
+                  <strong>시기/장소·시간:</strong> {plan.when} {plan.how ? `· ${plan.how}` : ''}
+                </p>
+              )}
+              {plan.expect && (
+                <p className="text-[11px] text-indigo-900 font-medium flex items-center gap-1">
+                  <span>✨</span>
+                  <span>{plan.expect}</span>
                 </p>
               )}
               {plan.cheer && (
