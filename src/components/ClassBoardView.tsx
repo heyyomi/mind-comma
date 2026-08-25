@@ -49,6 +49,8 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
   const [concerns, setConcerns] = useState<ConcernNote[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
+  const [isRemoteConnected, setIsRemoteConnected] = useState<boolean>(false);
+  const [remoteItemCount, setRemoteItemCount] = useState<number>(0);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('전체');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -61,6 +63,8 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
       const data = await fetchClassData();
       setPlans(data.plans);
       setConcerns(data.concerns);
+      setIsRemoteConnected(data.isRemote);
+      setRemoteItemCount(data.totalRemoteCount);
       setLastRefreshed(new Date().toLocaleTimeString());
     } catch (e) {
       console.error('Failed to load board data:', e);
@@ -297,6 +301,42 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
 
       {/* 전자칠판 본문 컨테이너 */}
       <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
+        {/* 구글 시트 실시간 연동 상태 표시 바 */}
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2.5 rounded-2xl border text-xs ${
+          isRemoteConnected 
+            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800' 
+            : config.webAppUrl 
+              ? 'bg-amber-50/80 border-amber-200 text-amber-800'
+              : 'bg-slate-100 border-slate-200 text-slate-700'
+        }`}>
+          <div className="flex items-center gap-2 font-medium">
+            {isRemoteConnected ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span><strong>구글 시트 실시간 연결됨</strong> · 원격 시트에서 총 <strong>{remoteItemCount}명</strong>의 기록을 실시간 동기화 중입니다.</span>
+              </>
+            ) : config.webAppUrl ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span>구글 시트 주소가 설정되어 있습니다. 데이터를 불러오는 중이거나 시트의 [모든 사용자] 권한을 확인해주세요.</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                <span>현재 로컬 브라우저 모드입니다. 다른 PC/학생 스마트폰과 실시간으로 모으려면 상단의 <strong>[시트 설정]</strong>을 클릭하세요.</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-slate-500 self-end sm:self-auto">
+            {lastRefreshed && <span>마지막 확인: {lastRefreshed}</span>}
+            <button
+              onClick={() => loadData(false)}
+              className="text-indigo-600 hover:text-indigo-800 font-semibold underline underline-offset-2"
+            >
+              지금 다시 동기화
+            </button>
+          </div>
+        </div>
         {/* ========================================================================= */}
         {/* [종류 1: STEP 3 마음 & 고민 나누기 게시판] */}
         {/* ========================================================================= */}

@@ -3,8 +3,8 @@ import { CheckinResult, ClassroomBoardNote, ConcernNote, GoogleSheetConfig, Plan
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * [온기, 마음 쉼표, 스트레스 Free Day] Google Apps Script (Code.gs)
  * 
- * 1인 1줄(한 행) 통합 저장 시스템:
- * 학생 1명당 1개의 행만 생성되며 [일시, 이름, 학급, 스트레스점수 ~ 나에게응원]까지 모든 내용이 한 줄로 깔끔하게 통합 저장됩니다.
+ * 1인 1줄(한 행) 통합 저장 & 실시간 전자칠판 전 기기 동기화 시스템:
+ * 학생 1명당 1개의 행만 생성되며 [일시, 이름, 학급, 스트레스점수 ~ 나에게응원]까지 모든 내용이 한 줄로 통합 수합됩니다.
  * 
  * 1. 이 코드를 복사하여 구글 시트 > [확장 프로그램] > [Apps Script] 에 붙여넣으세요.
  * 2. 상단 [배포] > [새 배포] (또는 배포 관리 > 새 버전) > 유형: [웹 앱] 선택
@@ -18,35 +18,66 @@ function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = e && e.parameter ? e.parameter.action : "";
+    var callback = e && e.parameter ? (e.parameter.callback || e.parameter.prefix) : "";
     
-    // 관리자 PIN 조회 요청
+    // 1. 관리자 PIN 조회 요청
     if (action === "getPin") {
       var configSheet = getOrCreateConfigSheet(ss);
       var currentPin = getPinFromConfigSheet(configSheet);
-      return createJsonResponse({ status: "success", pin: currentPin });
+      return createJsonResponse({ status: "success", pin: currentPin }, callback);
     }
 
     var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
     var data = sheet.getDataRange().getValues();
     
     if (data.length <= 1) {
-      return createJsonResponse({ status: "success", count: 0, items: [] });
+      return createJsonResponse({ status: "success", count: 0, items: [] }, callback);
     }
     
     var headers = data[0];
     var items = [];
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
+      // 빈 행 건너뛰기
+      var hasValue = false;
+      for (var k = 0; k < row.length; k++) {
+        if (row[k] !== "" && row[k] !== undefined && row[k] !== null) {
+          hasValue = true;
+          break;
+        }
+      }
+      if (!hasValue) continue;
+
       var item = {};
       for (var j = 0; j < headers.length; j++) {
-        item[headers[j]] = row[j];
+        var hName = String(headers[j] || ("col" + j)).trim();
+        item[hName] = row[j];
       }
+      
+      // 위치 기반 표준 필드 매핑 (헤더명이 달라도 완벽 호환 보장)
+      item["_rowIndex"] = i + 1;
+      item["time"] = String(row[0] || "");
+      item["type"] = String(row[1] || "");
+      item["studentName"] = String(row[2] || "익명");
+      item["gradeClass"] = String(row[3] || "우리반");
+      item["stressScore"] = row[4] !== undefined ? row[4] : "";
+      item["stressTier"] = String(row[5] || "");
+      item["categories"] = String(row[6] || "");
+      item["situation"] = String(row[7] || "");
+      item["method"] = String(row[8] || "");
+      item["reason"] = String(row[9] || "");
+      item["whenTime"] = String(row[10] || "");
+      item["how"] = String(row[11] || "");
+      item["expect"] = String(row[12] || "");
+      item["cheer"] = String(row[13] || "");
+      item["sessionId"] = String(row[14] || "");
+      
       items.push(item);
     }
     
-    return createJsonResponse({ status: "success", count: items.length, items: items.reverse() });
+    return createJsonResponse({ status: "success", count: items.length, items: items.reverse() }, callback);
   } catch (err) {
-    return createJsonResponse({ status: "error", message: err.toString() });
+    return createJsonResponse({ status: "error", message: err.toString() }, callback);
   } finally {
     lock.releaseLock();
   }
@@ -57,7 +88,16 @@ function doPost(e) {
   lock.tryLock(10000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var body = e.postData ? JSON.parse(e.postData.contents) : e.parameter;
+    var body = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        body = JSON.parse(e.postData.contents);
+      } catch (ex) {
+        body = e.parameter || {};
+      }
+    } else if (e && e.parameter) {
+      body = e.parameter;
+    }
     
     // 1. 관리자 PIN 변경 요청
     if (body && body.action === "updatePin") {
@@ -235,8 +275,13 @@ function savePinToConfigSheet(sheet, newPin) {
   sheet.appendRow(["관리자_PIN", String(newPin).trim()]);
 }
 
-function createJsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
+function createJsonResponse(data, callback) {
+  var output = JSON.stringify(data);
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + output + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(output)
     .setMimeType(ContentService.MimeType.JSON);
 }
 `;
@@ -325,12 +370,10 @@ export const verifyAdminPin = (inputPin: string): boolean => {
 // 비동기식 PIN 검증 (원격 구글 시트 최신 PIN까지 실시간 확인)
 export const verifyAdminPinAsync = async (inputPin: string): Promise<boolean> => {
   const trimmed = inputPin.trim();
-  // 1. 로컬에 저장된 핀과 맞으면 즉시 통과
   if (trimmed === getAdminPin().trim()) {
     return true;
   }
 
-  // 2. 불일치할 경우 원격 구글 시트 최신 PIN 확인 시도
   const config = getSavedConfig();
   if (config.webAppUrl) {
     try {
@@ -385,7 +428,7 @@ export const generateClassroomShareUrl = (boardOnly = false): string => {
     params.set('board', '1');
   }
   if (config.webAppUrl) {
-    params.set('sheetUrl', config.webAppUrl);
+    params.set('sheetUrl', config.webAppUrl.trim());
   }
   if (config.schoolName) {
     params.set('school', config.schoolName);
@@ -413,17 +456,17 @@ export const applyUrlConfigParams = (): boolean => {
     let updated = false;
     const currentConfig = getSavedConfig();
 
-    if (sheetUrl && sheetUrl !== currentConfig.webAppUrl) {
-      currentConfig.webAppUrl = sheetUrl;
+    if (sheetUrl && sheetUrl.trim() !== currentConfig.webAppUrl) {
+      currentConfig.webAppUrl = sheetUrl.trim();
       currentConfig.isConnected = true;
       updated = true;
     }
-    if (school && school !== currentConfig.schoolName) {
-      currentConfig.schoolName = school;
+    if (school && school.trim() !== currentConfig.schoolName) {
+      currentConfig.schoolName = school.trim();
       updated = true;
     }
-    if (className && className !== currentConfig.className) {
-      currentConfig.className = className;
+    if (className && className.trim() !== currentConfig.className) {
+      currentConfig.className = className.trim();
       updated = true;
     }
 
@@ -568,6 +611,39 @@ export const saveLocalCheckin = (checkin: CheckinResult) => {
   localStorage.setItem(LOCAL_CHECKINS_KEY, JSON.stringify(updated));
 };
 
+// JSONP 백업 fetcher (CORS 또는 모바일 환경에서 Google Apps Script 데이터를 가장 안전하게 가져옴)
+const fetchViaJsonp = (url: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'gas_callback_' + Math.random().toString(36).substring(2, 9);
+    const script = document.createElement('script');
+    
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error('JSONP Request Timeout'));
+    }, 8000);
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      delete (window as any)[callbackName];
+    };
+
+    (window as any)[callbackName] = (data: any) => {
+      cleanup();
+      resolve(data);
+    };
+
+    const separator = url.includes('?') ? '&' : '?';
+    script.src = `${url}${separator}callback=${callbackName}&_t=${Date.now()}`;
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('JSONP Script Load Error'));
+    };
+
+    document.head.appendChild(script);
+  });
+};
+
 // 구글 시트 웹앱 연결 테스트
 export const testGoogleSheet = async (webAppUrl: string): Promise<{ success: boolean; message: string }> => {
   if (!webAppUrl || !webAppUrl.startsWith('http')) {
@@ -581,15 +657,22 @@ export const testGoogleSheet = async (webAppUrl: string): Promise<{ success: boo
     if (response.ok) {
       return { success: true, message: '구글 시트 웹 앱과 정상적으로 연결되었습니다!' };
     }
+    // JSONP 시도
+    const jsonpRes = await fetchViaJsonp(webAppUrl);
+    if (jsonpRes && jsonpRes.status === 'success') {
+      return { success: true, message: '구글 시트 웹 앱과 정상적으로 연결되었습니다! (JSONP 모드)' };
+    }
     return { success: false, message: `응답 오류 (${response.status}) - 배포 설정 권한(모든 사용자)을 확인해주세요.` };
   } catch (err: any) {
-    // CORS 제약이 있는 경우 no-cors 핑 시도
     try {
-      await fetch(webAppUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: '연결테스트' }) });
-      return { success: true, message: '웹 앱 URL로 요청을 전송할 수 있습니다. (no-cors 모드 지원)' };
-    } catch (e2: any) {
-      return { success: false, message: '연결 실패: 웹 앱 배포 시 [액세스 권한: 모든 사용자]로 배포되었는지 확인해주세요.' };
+      const jsonpRes = await fetchViaJsonp(webAppUrl);
+      if (jsonpRes && jsonpRes.status === 'success') {
+        return { success: true, message: '구글 시트 웹 앱과 정상적으로 연결되었습니다! (JSONP 모드)' };
+      }
+    } catch (e2) {
+      // ignore
     }
+    return { success: false, message: '연결 실패: 웹 앱 배포 시 [액세스 권한: 모든 사용자(Anyone)]로 배포되었는지 확인해주세요.' };
   }
 };
 
@@ -604,38 +687,32 @@ export const submitConcernRecord = async (
   const config = getSavedConfig();
   const noteId = 'concern-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
 
-  const safeName = typeof studentName === 'string' ? studentName.trim() : '';
-  const safeCategories = Array.isArray(categories) ? categories : [];
-  const safeSituation = typeof situation === 'string' ? situation : '';
-
   const newConcern: ConcernNote = {
     id: noteId,
-    studentName: safeName || '익명 친구',
+    studentName: studentName || '익명 친구',
     gradeClass: config.className || '우리 반',
-    categories: safeCategories,
-    situation: safeSituation,
+    categories,
+    situation,
     createdAt: new Date().toLocaleString(),
     colorIndex: Math.floor(Math.random() * 5),
     likes: 0,
   };
 
-  // 1. 로컬 저장 (항상 먼저 안전하게 로컬에 기록)
   saveLocalConcern(newConcern);
 
   if (!config.webAppUrl) {
     return { success: true, isRemote: false, noteId };
   }
 
-  // 2. 구글 시트 POST
   try {
     const payload = {
       type: '고민나눔',
-      studentName: safeName || '익명 친구',
+      studentName: studentName || '익명 친구',
       gradeClass: config.className || '우리 반',
       stressScore: checkin ? checkin.score : '',
       stressTier: checkin ? checkin.tier : '',
-      categories: safeCategories.join(', '),
-      situation: safeSituation,
+      categories: categories.join(', '),
+      situation,
       method: '',
       reason: '',
       whenTime: '',
@@ -654,12 +731,12 @@ export const submitConcernRecord = async (
 
     return { success: true, isRemote: true, noteId };
   } catch (error) {
-    console.warn('Google Sheets concern transmission error (saved locally):', error);
+    console.warn('Google Sheets transmission error (saved locally):', error);
     return { success: true, isRemote: false, noteId };
   }
 };
 
-// STEP 5 실천 다짐(종이비행기) 저장 전송
+// STEP 5 실천 다짐 (종이비행기) 저장 전송 (1인 1행 통합 저장)
 export const submitPlanRecord = async (
   plan: PlanData,
   checkin?: CheckinResult | null,
@@ -677,11 +754,10 @@ export const submitPlanRecord = async (
     cheer: plan.cheer,
     studentName: plan.studentName || '익명',
     gradeClass: plan.gradeClass || '우리 반',
-    createdAt: plan.createdAt,
+    createdAt: new Date().toLocaleString(),
     colorIndex: Math.floor(Math.random() * 5),
   };
 
-  // 1. 로컬 보관
   saveLocalNote(newNote);
 
   const config = getSavedConfig();
@@ -689,12 +765,11 @@ export const submitPlanRecord = async (
     return { success: true, isRemote: false };
   }
 
-  // 2. 구글 시트로 POST 전송
   try {
     const payload = {
       type: '실천다짐',
       studentName: plan.studentName || '익명',
-      gradeClass: plan.gradeClass || config.className,
+      gradeClass: plan.gradeClass || config.className || '우리 반',
       stressScore: checkin ? checkin.score : '',
       stressTier: checkin ? checkin.tier : '',
       categories: factorCategories.join(', '),
@@ -755,12 +830,19 @@ export const submitCheckinRecord = async (
 export const fetchClassData = async (): Promise<{
   plans: ClassroomBoardNote[];
   concerns: ConcernNote[];
+  isRemote: boolean;
+  totalRemoteCount: number;
 }> => {
   const config = getSavedConfig();
   let remotePlans: ClassroomBoardNote[] = [];
   let remoteConcerns: ConcernNote[] = [];
+  let isRemoteSuccess = false;
+  let totalCount = 0;
 
   if (config.webAppUrl) {
+    let json: any = null;
+
+    // 1차 시도: 표준 Fetch CORS
     try {
       const fetchUrl = config.webAppUrl.includes('?')
         ? `${config.webAppUrl}&_t=${Date.now()}`
@@ -771,53 +853,75 @@ export const fetchClassData = async (): Promise<{
         mode: 'cors',
       });
       if (response.ok) {
-        const json = await response.json();
-        if (json && json.status === 'success' && Array.isArray(json.items)) {
-          // 실천 다짐 파싱
-          remotePlans = json.items
-            .filter((item: any) => (item['실천방법'] || item.method) && item['유형'] !== '고민나눔')
-            .map((item: any, idx: number) => ({
-              id: 'remote-plan-' + idx + '-' + (item['일시'] || idx),
-              method: item['실천방법'] || item.method || '',
-              reason: item['선택이유'] || item.reason || '',
-              when: item['실천시기'] || item.whenTime || '',
-              how: item['실천방법세부'] || item.how || '',
-              expect: item['기대효과'] || item.expect || '',
-              cheer: item['나에게응원'] || item.cheer || '',
-              studentName: item['이름'] || item.studentName || '익명',
-              gradeClass: item['학급'] || item.gradeClass || '우리 반',
-              createdAt: item['일시'] || new Date().toLocaleString(),
-              colorIndex: idx % 5,
-            }));
-
-          // 고민 나눔 파싱
-          remoteConcerns = json.items
-            .filter((item: any) => (item['상황설명'] || item.situation || item['주요원인'] || item.categories) && item['유형'] === '고민나눔')
-            .map((item: any, idx: number) => {
-              const catRaw = item['주요원인'] || item.categories || '';
-              const categories = typeof catRaw === 'string' ? catRaw.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
-              return {
-                id: 'remote-concern-' + idx + '-' + (item['일시'] || idx),
-                studentName: item['이름'] || item.studentName || '익명 친구',
-                gradeClass: item['학급'] || item.gradeClass || '우리 반',
-                categories,
-                situation: item['상황설명'] || item.situation || '',
-                createdAt: item['일시'] || new Date().toLocaleString(),
-                colorIndex: idx % 5,
-                likes: 0,
-              };
-            });
-        }
+        json = await response.json();
       }
     } catch (e) {
-      console.warn('Could not fetch from remote sheet, merging with local:', e);
+      console.warn('Direct fetch failed, attempting JSONP fallback...', e);
+    }
+
+    // 2차 시도: JSONP fallback (모바일 Safari, 웹뷰 등에서 CORS 제약 우회)
+    if (!json || json.status !== 'success') {
+      try {
+        json = await fetchViaJsonp(config.webAppUrl);
+      } catch (e2) {
+        console.warn('JSONP fetch also failed:', e2);
+      }
+    }
+
+    if (json && json.status === 'success' && Array.isArray(json.items)) {
+      isRemoteSuccess = true;
+      totalCount = json.items.length;
+
+      // 1. 실천 다짐 파싱: 실천 방법이나 세부 내용이 있는 모든 행을 수합
+      remotePlans = json.items
+        .filter((item: any) => {
+          const method = item['실천방법'] || item.method || item['실천방법세부'] || item.how || '';
+          return String(method).trim().length > 0;
+        })
+        .map((item: any, idx: number) => ({
+          id: 'remote-plan-' + idx + '-' + (item['일시'] || item.time || idx),
+          method: String(item['실천방법'] || item.method || '').trim(),
+          reason: String(item['선택이유'] || item.reason || '').trim(),
+          when: String(item['실천시기'] || item.whenTime || '').trim(),
+          how: String(item['실천방법세부'] || item.how || '').trim(),
+          expect: String(item['기대효과'] || item.expect || '').trim(),
+          cheer: String(item['나에게응원'] || item.cheer || '').trim(),
+          studentName: String(item['이름'] || item.studentName || '익명').trim(),
+          gradeClass: String(item['학급'] || item.gradeClass || '우리반').trim(),
+          createdAt: String(item['일시'] || item.time || new Date().toLocaleString()).trim(),
+          colorIndex: idx % 5,
+        }));
+
+      // 2. 고민 나눔 파싱: 상황설명이나 주요원인이 작성된 모든 행을 수합 (1인 1줄 통합 행도 포함!)
+      remoteConcerns = json.items
+        .filter((item: any) => {
+          const situation = item['상황설명'] || item.situation || '';
+          const categories = item['주요원인'] || item.categories || '';
+          return String(situation).trim().length > 0 || String(categories).trim().length > 0;
+        })
+        .map((item: any, idx: number) => {
+          const catRaw = item['주요원인'] || item.categories || '';
+          const categories = typeof catRaw === 'string' 
+            ? catRaw.split(',').map((s: string) => s.trim()).filter(Boolean) 
+            : [];
+          return {
+            id: 'remote-concern-' + idx + '-' + (item['일시'] || item.time || idx),
+            studentName: String(item['이름'] || item.studentName || '익명 친구').trim(),
+            gradeClass: String(item['학급'] || item.gradeClass || '우리반').trim(),
+            categories,
+            situation: String(item['상황설명'] || item.situation || '').trim(),
+            createdAt: String(item['일시'] || item.time || new Date().toLocaleString()).trim(),
+            colorIndex: idx % 5,
+            likes: 0,
+          };
+        });
     }
   }
 
   const localPlans = getLocalNotes();
   const localConcerns = getLocalConcerns();
 
-  // 원격 데이터와 로컬 데이터를 통합 (중복 방지)
+  // 원격 데이터가 성공적으로 조회된 경우 원격 데이터를 우선하며, 미동기화된 로컬 작성분만 스마트 병합
   let finalPlans: ClassroomBoardNote[] = [...remotePlans];
   if (localPlans.length > 0) {
     localPlans.forEach((lp) => {
@@ -851,6 +955,8 @@ export const fetchClassData = async (): Promise<{
   return {
     plans: finalPlans,
     concerns: finalConcerns,
+    isRemote: isRemoteSuccess,
+    totalRemoteCount: totalCount,
   };
 };
 
@@ -910,4 +1016,3 @@ export const exportDataAsCSV = (mode: 'all' | 'plans' | 'concerns' = 'all') => {
   URL.revokeObjectURL(url);
   return true;
 };
-
