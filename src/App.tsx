@@ -1,7 +1,7 @@
 import { useState, useEffect, useId } from 'react';
 import confetti from 'canvas-confetti';
 import { StepId, CheckinResult, PlanData, GoogleSheetConfig, ToastMessage, StressTier } from './types';
-import { getSavedConfig, submitCheckinRecord, submitPlanRecord, submitConcernRecord, syncAdminPinFromRemote, applyUrlConfigParams } from './services/googleSheets';
+import { getSavedConfig, saveLocalCheckin, submitPlanRecord, submitConcernRecord, syncAdminPinFromRemote, applyUrlConfigParams } from './services/googleSheets';
 import { Header } from './components/Header';
 import { StepIntro } from './components/StepIntro';
 import { Step1Learn } from './components/Step1Learn';
@@ -15,7 +15,7 @@ import { GoogleSheetModal } from './components/GoogleSheetModal';
 import { AdminAuthModal } from './components/AdminAuthModal';
 import { ClassQrModal } from './components/ClassQrModal';
 import { Toast } from './components/Toast';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export default function App() {
   const generatedId = useId();
@@ -25,6 +25,11 @@ export default function App() {
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [config, setConfig] = useState<GoogleSheetConfig>(getSavedConfig());
+
+  // 1인 1줄 구글 시트 통합 관리를 위한 고유 세션 식별자
+  const [sessionId, setSessionId] = useState<string>(
+    () => 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7)
+  );
 
   // 관리자 인증 모달 상태
   const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false);
@@ -133,8 +138,8 @@ export default function App() {
       };
       setCheckinResult(result);
 
-      // 백그라운드로 자가진단 결과 시트 & 로컬 저장
-      submitCheckinRecord(result, studentNickname || plan.studentName || '익명', config.className);
+      // 자가진단 결과 로컬 저장 (시트에는 미완성 행이 남지 않고 STEP 3/5에서 1인 1줄로 통합 전송)
+      saveLocalCheckin(result);
     }
   };
 
@@ -152,7 +157,8 @@ export default function App() {
         studentNickname || plan.studentName || '익명 친구',
         selectedCategories,
         situationText,
-        checkinResult
+        checkinResult,
+        sessionId
       );
       if (res.isRemote) {
         showToast('🌿 구글 시트와 우리 반 전자칠판에 마음을 등록했어요!');
@@ -182,7 +188,7 @@ export default function App() {
     }
   };
 
-  // STEP 5 종이비행기 날리기 (구글 시트 & 로컬 전송)
+  // STEP 5 종이비행기 날리기 (구글 시트 & 로컬 전송: 1인 1행 통합 전송)
   const handleSubmitPlan = async () => {
     setIsSubmittingPlan(true);
     try {
@@ -197,12 +203,13 @@ export default function App() {
         planToSave,
         checkinResult,
         selectedCategories,
-        situationText
+        situationText,
+        sessionId
       );
 
       setHasSubmittedPlan(true);
       if (res.isRemote) {
-        showToast('✈️ 구글 시트와 우리 반 하늘에 종이비행기를 날렸어요!');
+        showToast('✈️ 구글 시트와 우리 반 하늘에 종이비행기를 날렸어요! (1줄 기록 완료)');
       } else {
         showToast('✈️ 마음을 띄워보냈어요! (로컬 및 반 게시판 저장 완료)');
       }
@@ -222,6 +229,7 @@ export default function App() {
     setSituationText('');
     setStudentNickname('');
     setSelectedMethods([]);
+    setSessionId('session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));
     setPlan({
       id: `plan-${Date.now()}-${generatedId}`,
       method: '',

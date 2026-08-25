@@ -154,9 +154,14 @@ export const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({
 
           {/* 4단계 연동 안내 가이드 */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-2.5 shadow-xs">
-            <div className="font-semibold text-indigo-600 flex items-center gap-1.5 text-xs">
-              <Sparkles className="w-4 h-4" />
-              <span>구글 시트 연동 초간단 4단계 가이드</span>
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-indigo-600 flex items-center gap-1.5 text-xs">
+                <Sparkles className="w-4 h-4" />
+                <span>구글 시트 연동 초간단 4단계 가이드 (1인 1줄 통합 저장)</span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                1인 1행 자동 병합 지원
+              </span>
             </div>
             <ol className="space-y-1.5 text-xs text-slate-600 list-decimal list-inside leading-relaxed">
               <li>
@@ -169,9 +174,12 @@ export const GoogleSheetModal: React.FC<GoogleSheetModalProps> = ({
                 아래의 <strong>Code.gs</strong> 코드를 복사하여 편집기에 붙여넣고 저장(Ctrl+S)합니다.
               </li>
               <li>
-                상단 <strong>[배포] → [새 배포]</strong> 클릭 후 <strong>유형: 웹 앱</strong>, <strong>액세스 권한: [모든 사용자(Anyone)]</strong>로 설정 후 배포하여 발급된 URL을 아래에 입력합니다.
+                상단 <strong>[배포] → [새 배포]</strong> (또는 배포 관리 → 새 버전) 클릭 후 <strong>유형: 웹 앱</strong>, <strong>액세스 권한: [모든 사용자(Anyone)]</strong>로 설정 후 배포하여 발급된 URL을 아래에 입력합니다.
               </li>
             </ol>
+            <p className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-100">
+              💡 <strong>1인 1줄 수집 방식</strong>: 학생이 자가진단(점수), 고민 나눔, 실천 다짐(나에게 응원)을 진행하면 별도의 여러 줄로 쪼개지지 않고 <strong>한 사람당 1개의 행</strong>에 모든 내용이 깔끔하게 통합 저장됩니다.
+            </p>
           </div>
 
           {/* Code.gs 코드 복사 박스 */}

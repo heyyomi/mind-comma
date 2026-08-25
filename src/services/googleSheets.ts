@@ -3,6 +3,9 @@ import { CheckinResult, ClassroomBoardNote, ConcernNote, GoogleSheetConfig, Plan
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * [온기, 마음 쉼표, 스트레스 Free Day] Google Apps Script (Code.gs)
  * 
+ * 1인 1줄(한 행) 통합 저장 시스템:
+ * 학생 1명당 1개의 행만 생성되며 [일시, 이름, 학급, 스트레스점수 ~ 나에게응원]까지 모든 내용이 한 줄로 깔끔하게 통합 저장됩니다.
+ * 
  * 1. 이 코드를 복사하여 구글 시트 > [확장 프로그램] > [Apps Script] 에 붙여넣으세요.
  * 2. 상단 [배포] > [새 배포] (또는 배포 관리 > 새 버전) > 유형: [웹 앱] 선택
  * 3. 다음 사용자 계정으로 실행: [나] / 액세스 권한: [모든 사용자(Anyone)] 선택 후 [배포] 클릭
@@ -82,19 +85,16 @@ function doPost(e) {
       
       for (var r = allData.length - 1; r >= 1; r--) {
         var rowVal = allData[r];
-        var rowTime = String(rowVal[0] || "");
-        var rowType = String(rowVal[1] || "");
         var rowName = String(rowVal[2] || "");
         var rowSituation = String(rowVal[7] || "");
         var rowMethod = String(rowVal[8] || "");
 
         var matchName = !body.studentName || rowName === body.studentName;
-        var matchType = !body.type || rowType === body.type;
         var matchContent = (!body.situation && !body.method) || 
                            (body.situation && rowSituation === body.situation) || 
                            (body.method && rowMethod === body.method);
 
-        if (matchName && matchType && matchContent) {
+        if (matchName && matchContent) {
           targetSheet.deleteRow(r + 1);
           deleted = true;
           break;
@@ -104,30 +104,83 @@ function doPost(e) {
     }
 
     var sheet = getOrCreateSheet(ss, "마음쉼표_기록");
-    
     var now = new Date();
     var timeString = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd HH:mm:ss");
-    
-    var rowData = [
-      timeString,
-      body.type || "실천다짐",
-      body.studentName || "익명",
-      body.gradeClass || "우리반",
-      body.stressScore || "",
-      body.stressTier || "",
-      body.categories || "",
-      body.situation || "",
-      body.method || "",
-      body.reason || "",
-      body.whenTime || "",
-      body.how || "",
-      body.expect || "",
-      body.cheer || ""
-    ];
-    
-    sheet.appendRow(rowData);
-    
-    return createJsonResponse({ status: "success", message: "저장되었습니다.", time: timeString });
+
+    var sessionId = String(body.sessionId || "").trim();
+    var studentName = String(body.studentName || "익명").trim();
+    var gradeClass = String(body.gradeClass || "우리반").trim();
+    var type = body.method ? "실천다짐" : (body.type || "고민나눔");
+
+    var allData = sheet.getDataRange().getValues();
+    var existingRowIndex = -1;
+
+    // 1인 1행 통합: 기존에 작성된 같은 학생/세션의 행이 있는지 검색
+    if (allData.length > 1) {
+      for (var i = allData.length - 1; i >= 1; i--) {
+        var rVal = allData[i];
+        var rSession = String(rVal[14] || "").trim();
+        var rName = String(rVal[2] || "").trim();
+        var rClass = String(rVal[3] || "").trim();
+
+        // 1순위: sessionId 일치
+        if (sessionId && rSession && sessionId === rSession) {
+          existingRowIndex = i + 1;
+          break;
+        }
+
+        // 2순위: sessionId가 없거나 매칭 안되더라도, 동일 학생 이름&학급이고 이전 행의 실천방법이 비어있는 경우
+        if (studentName !== "익명" && rName === studentName && rClass === gradeClass && !rVal[8]) {
+          existingRowIndex = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (existingRowIndex > 1) {
+      // 기존 행 업데이트: 이전 데이터 보존 및 신규 입력 필드 병합 (1인 1줄 완성)
+      var prevRow = allData[existingRowIndex - 1];
+      var mergedData = [
+        timeString,
+        body.method ? "실천다짐" : (prevRow[1] || type),
+        studentName !== "익명" ? studentName : (prevRow[2] || studentName),
+        gradeClass !== "우리반" ? gradeClass : (prevRow[3] || gradeClass),
+        (body.stressScore !== undefined && body.stressScore !== "") ? body.stressScore : (prevRow[4] || ""),
+        body.stressTier || prevRow[5] || "",
+        body.categories || prevRow[6] || "",
+        body.situation || prevRow[7] || "",
+        body.method || prevRow[8] || "",
+        body.reason || prevRow[9] || "",
+        body.whenTime || prevRow[10] || "",
+        body.how || prevRow[11] || "",
+        body.expect || prevRow[12] || "",
+        body.cheer || prevRow[13] || "",
+        sessionId || prevRow[14] || ""
+      ];
+      sheet.getRange(existingRowIndex, 1, 1, mergedData.length).setValues([mergedData]);
+      return createJsonResponse({ status: "success", message: "1인 1행 데이터가 성공적으로 갱신되었습니다.", time: timeString, updatedRow: existingRowIndex });
+    } else {
+      // 신규 학생 행 추가
+      var newRowData = [
+        timeString,
+        type,
+        studentName,
+        gradeClass,
+        (body.stressScore !== undefined && body.stressScore !== "") ? body.stressScore : "",
+        body.stressTier || "",
+        body.categories || "",
+        body.situation || "",
+        body.method || "",
+        body.reason || "",
+        body.whenTime || "",
+        body.how || "",
+        body.expect || "",
+        body.cheer || "",
+        sessionId
+      ];
+      sheet.appendRow(newRowData);
+      return createJsonResponse({ status: "success", message: "저장되었습니다.", time: timeString });
+    }
   } catch (err) {
     return createJsonResponse({ status: "error", message: err.toString() });
   } finally {
@@ -142,9 +195,9 @@ function getOrCreateSheet(ss, name) {
     sheet.appendRow([
       "일시", "유형", "이름", "학급", "스트레스점수", "스트레스단계", 
       "주요원인", "상황설명", "실천방법", "선택이유", "실천시기", "실천방법세부", 
-      "기대효과", "나에게응원"
+      "기대효과", "나에게응원", "세션식별자"
     ]);
-    sheet.getRange(1, 1, 1, 14).setBackground("#E0E7FF").setFontWeight("bold");
+    sheet.getRange(1, 1, 1, 15).setBackground("#E0E7FF").setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -545,7 +598,8 @@ export const submitConcernRecord = async (
   studentName: string,
   categories: string[],
   situation: string,
-  checkin?: CheckinResult | null
+  checkin?: CheckinResult | null,
+  sessionId?: string
 ): Promise<{ success: boolean; isRemote: boolean; noteId: string }> => {
   const config = getSavedConfig();
   const noteId = 'concern-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
@@ -588,6 +642,7 @@ export const submitConcernRecord = async (
       how: '',
       expect: '',
       cheer: '',
+      sessionId: sessionId || '',
     };
 
     await fetch(config.webAppUrl, {
@@ -609,7 +664,8 @@ export const submitPlanRecord = async (
   plan: PlanData,
   checkin?: CheckinResult | null,
   factorCategories: string[] = [],
-  situation: string = ''
+  situation: string = '',
+  sessionId?: string
 ): Promise<{ success: boolean; isRemote: boolean }> => {
   const newNote: ClassroomBoardNote = {
     id: plan.id,
@@ -649,6 +705,7 @@ export const submitPlanRecord = async (
       how: plan.how,
       expect: plan.expect,
       cheer: plan.cheer,
+      sessionId: sessionId || '',
     };
 
     await fetch(config.webAppUrl, {
