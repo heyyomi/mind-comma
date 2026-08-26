@@ -99,6 +99,7 @@ export const Step3Examine: React.FC<Step3ExamineProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {STRESS_CATEGORIES.map((cat) => {
             const isSelected = selectedCategories.includes(cat.id);
+
             return (
               <button
                 key={cat.id}
@@ -106,14 +107,21 @@ export const Step3Examine: React.FC<Step3ExamineProps> = ({
                   onToggleCategory(cat.id);
                   setIsSaved(false);
                 }}
-                className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium transition-all text-left ${
+                className={`flex items-start gap-2 p-2.5 rounded-xl border text-xs font-medium transition-all text-left min-h-[52px] ${
                   isSelected
                     ? 'bg-slate-900 text-white border-slate-900 shadow-xs font-semibold'
                     : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <span className="text-lg">{cat.icon}</span>
-                <span className="truncate">{cat.id}</span>
+                <span className="text-lg shrink-0 mt-0.5">{cat.icon}</span>
+                <div className="flex flex-col leading-tight overflow-hidden">
+                  <span className="font-semibold text-xs">{cat.id}</span>
+                  {cat.sub && (
+                    <span className={`text-[10px] tracking-tight mt-0.5 truncate ${isSelected ? 'text-slate-200' : 'text-slate-500'}`}>
+                      {cat.sub}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}

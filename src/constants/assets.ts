@@ -16,12 +16,12 @@ export const QUIZ_OPTIONS: QuizOption[] = [
 ];
 
 export const STRESS_CATEGORIES = [
-  { id: '학업', label: '학업·성적·수행평가', icon: '📚', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-  { id: '교우관계', label: '친구·교우관계·SNS', icon: '🧑‍🤝‍🧑', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-  { id: '가족', label: '가족·부모님 기대', icon: '🏡', color: 'bg-amber-50 text-amber-700 border-amber-100' },
-  { id: '자신', label: '외모·자존감·완벽주의', icon: '🪞', color: 'bg-purple-50 text-purple-700 border-purple-100' },
-  { id: '환경', label: '수면부족·스마트폰·시간', icon: '📱', color: 'bg-rose-50 text-rose-700 border-rose-100' },
-  { id: '진로', label: '진로·미래 불확실성', icon: '🔮', color: 'bg-blue-50 text-blue-700 border-blue-100' },
+  { id: '학업', label: '학업·성적·수행평가', sub: '(성적, 시험, 숙제)', icon: '📚', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+  { id: '교우관계', label: '친구·교우관계·SNS', sub: '(친구, SNS, 갈등)', icon: '🧑‍🤝‍🧑', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { id: '가족', label: '가족·부모님 기대', sub: '(부모님, 잔소리, 기대)', icon: '🏡', color: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { id: '자신', label: '건강·외모·성격·자존감', sub: '(건강, 외모, 성격)', icon: '🪞', color: 'bg-purple-50 text-purple-700 border-purple-100' },
+  { id: '환경&습관', label: '수면부족·스마트폰·시간', sub: '(수면부족, 스마트폰)', icon: '📱', color: 'bg-rose-50 text-rose-700 border-rose-100' },
+  { id: '진로', label: '진로·미래 불확실성', sub: '(진로, 미래, 진학)', icon: '🔮', color: 'bg-blue-50 text-blue-700 border-blue-100' },
 ];
 
 export const HEALING_METHODS = [

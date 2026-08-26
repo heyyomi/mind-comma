@@ -91,7 +91,18 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
     let totalTags = 0;
     concerns.forEach((c) => {
       (c.categories || []).forEach((catId) => {
-        counts[catId] = (counts[catId] || 0) + 1;
+        const normalizedId =
+          catId === '자신' || catId === '자신(성격,외모 등)' || catId === '자신(건강, 외모, 성격)'
+            ? '자신'
+            : catId === '환경' || catId === '환경&습관'
+            ? '환경&습관'
+            : catId;
+
+        if (counts[normalizedId] !== undefined) {
+          counts[normalizedId] = (counts[normalizedId] || 0) + 1;
+        } else {
+          counts[normalizedId] = 1;
+        }
         totalTags += 1;
       });
     });
@@ -102,7 +113,22 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
   // 필터링된 고민 목록
   const filteredConcerns = useMemo(() => {
     if (selectedCategoryFilter === '전체') return concerns;
-    return concerns.filter((c) => (c.categories || []).includes(selectedCategoryFilter));
+    return concerns.filter((c) =>
+      (c.categories || []).some((cat) => {
+        if (cat === selectedCategoryFilter) return true;
+        if (
+          selectedCategoryFilter === '자신' &&
+          (cat === '자신' || cat === '자신(성격,외모 등)' || cat === '자신(건강, 외모, 성격)')
+        )
+          return true;
+        if (
+          selectedCategoryFilter === '환경&습관' &&
+          (cat === '환경' || cat === '환경&습관')
+        )
+          return true;
+        return false;
+      })
+    );
   }, [concerns, selectedCategoryFilter]);
 
   const handleLikeConcern = (concernId: string, e: React.MouseEvent) => {
@@ -396,12 +422,17 @@ export const ClassBoardView: React.FC<ClassBoardViewProps> = ({
                       key={cat.id}
                       className={`p-3 rounded-2xl border ${cat.color} flex flex-col justify-between space-y-1.5`}
                     >
-                      <div className="flex items-center justify-between text-xs font-semibold">
-                        <span className="flex items-center gap-1">
-                          <span>{cat.icon}</span>
-                          <span>{cat.id}</span>
+                      <div className="flex items-start justify-between text-xs font-semibold gap-1">
+                        <span className="flex items-start gap-1">
+                          <span className="shrink-0 mt-0.5">{cat.icon}</span>
+                          <span className="flex flex-col text-left leading-tight">
+                            <span>{cat.id}</span>
+                            {cat.sub && (
+                              <span className="text-[9px] font-normal opacity-75">{cat.sub}</span>
+                            )}
+                          </span>
                         </span>
-                        <span className="font-bold">{count}명</span>
+                        <span className="font-bold shrink-0 mt-0.5">{count}명</span>
                       </div>
                       <div className="w-full bg-white/70 h-2 rounded-full overflow-hidden">
                         <div
